@@ -1,0 +1,1 @@
+export { VitalCard } from './VitalCard'

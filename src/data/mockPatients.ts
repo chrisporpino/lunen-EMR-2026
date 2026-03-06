@@ -1,0 +1,43 @@
+import type { Patient } from '../types'
+
+export const mockPatients: Patient[] = [
+  {
+    id: 'p1',
+    name: 'Maria Clara da Silva',
+    dateOfBirth: '1994-03-15',
+    dum: '2025-07-25',
+    eddCalc: '2026-05-02',
+    riskLevel: 'high',
+    bloodType: 'A+',
+    gravidity: 2,
+    parity: 1,
+    phone: '+55 11 99234-5678',
+    address: 'Rua das Flores, 142 – São Paulo, SP',
+  },
+  {
+    id: 'p2',
+    name: 'Ana Beatriz Oliveira',
+    dateOfBirth: '1998-07-22',
+    dum: '2026-01-09',
+    eddCalc: '2026-10-16',
+    riskLevel: 'low',
+    bloodType: 'O+',
+    gravidity: 1,
+    parity: 0,
+    phone: '+55 11 98765-4321',
+    address: 'Av. Paulista, 900 – São Paulo, SP',
+  },
+  {
+    id: 'p3',
+    name: 'Fernanda Costa Mendes',
+    dateOfBirth: '1990-11-05',
+    dum: '2025-10-17',
+    eddCalc: '2026-07-24',
+    riskLevel: 'medium',
+    bloodType: 'B-',
+    gravidity: 3,
+    parity: 2,
+    phone: '+55 21 97654-3210',
+    address: 'Rua da Consolação, 50 – Rio de Janeiro, RJ',
+  },
+]
