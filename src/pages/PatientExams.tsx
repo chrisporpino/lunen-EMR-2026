@@ -5,22 +5,53 @@ import { getExamsByPatient } from '../data/mockExams'
 import { getUltrasoundsByPatient } from '../data/mockUltrasounds'
 import { PatientHeader } from '../components/patient'
 import { ExamEvent, UltrasoundEvent } from '../components/timeline'
+import { ExamFormDrawer, UltrasoundFormDrawer, PatientFormDrawer } from '../components/forms'
+import type { Exam, Patient, Ultrasound } from '../types'
 
 type Filter = 'all' | 'lab' | 'imaging'
 
+type MergedItem =
+  | { kind: 'exam'; data: Exam }
+  | { kind: 'ultrasound'; data: Ultrasound }
+
+const sortByDate = <T extends { date: string }>(items: T[]): T[] =>
+  [...items].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+
+const mergeAndSort = (exams: Exam[], ultrasounds: Ultrasound[]): MergedItem[] =>
+  [
+    ...exams.map((e): MergedItem => ({ kind: 'exam', data: e })),
+    ...ultrasounds.map((u): MergedItem => ({ kind: 'ultrasound', data: u })),
+  ].sort((a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime())
+
 export function PatientExams() {
   const { id } = useParams<{ id: string }>()
-  const [filter, setFilter] = useState<Filter>('all')
 
-  const patient = mockPatients.find((p) => p.id === id)
+  // Hooks must be called before any early return
+  const [patient, setPatient] = useState<Patient | undefined>(() =>
+    mockPatients.find((p) => p.id === id),
+  )
+  const [editDrawerOpen, setEditDrawerOpen] = useState(false)
+  const [filter, setFilter] = useState<Filter>('all')
+  const [examDrawerOpen, setExamDrawerOpen] = useState(false)
+  const [usgDrawerOpen, setUsgDrawerOpen] = useState(false)
+  const [exams, setExams] = useState<Exam[]>(() =>
+    patient ? sortByDate(getExamsByPatient(patient.id)) : [],
+  )
+  const [ultrasounds, setUltrasounds] = useState<Ultrasound[]>(() =>
+    patient ? sortByDate(getUltrasoundsByPatient(patient.id)) : [],
+  )
+
   if (!patient) return <Navigate to="/" replace />
 
-  const exams = getExamsByPatient(patient.id).sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-  )
-  const ultrasounds = getUltrasoundsByPatient(patient.id).sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-  )
+  function refreshData() {
+    setExams(sortByDate(getExamsByPatient(patient!.id)))
+    setUltrasounds(sortByDate(getUltrasoundsByPatient(patient!.id)))
+  }
+
+  function handlePatientSaved() {
+    const updated = mockPatients.find((p) => p.id === patient!.id)
+    if (updated) setPatient({ ...updated })
+  }
 
   const filterLabels: Record<Filter, string> = {
     all: 'Todos',
@@ -30,16 +61,39 @@ export function PatientExams() {
 
   return (
     <div className="min-h-screen bg-bg">
-      <PatientHeader patient={patient} activeTab="exams" />
+      <PatientHeader patient={patient} activeTab="exams" onEdit={() => setEditDrawerOpen(true)} />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
+        <div className="flex flex-wrap items-center gap-3 mb-6">
+          <div className="flex-1 min-w-0">
             <h2 className="text-base font-semibold text-gray-800">Exames e Imagem</h2>
             <p className="text-xs text-muted mt-0.5">
               {exams.length} exames laboratoriais · {ultrasounds.length} ultrassonografias
             </p>
           </div>
+
+          {/* Botões de ação */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setExamDrawerOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-2 bg-accent/15 text-primary text-xs font-semibold rounded-xl hover:bg-accent/25 transition-colors border border-accent/20"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+              </svg>
+              Novo Exame
+            </button>
+            <button
+              onClick={() => setUsgDrawerOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-2 bg-purple-50 text-purple-600 text-xs font-semibold rounded-xl hover:bg-purple-100 transition-colors border border-purple-200"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+              </svg>
+              Nova USG
+            </button>
+          </div>
+
           {/* Filtros */}
           <div className="flex gap-1 bg-bg border border-border rounded-xl p-1">
             {(['all', 'lab', 'imaging'] as Filter[]).map((f) => (
@@ -59,35 +113,57 @@ export function PatientExams() {
         </div>
 
         <div className="max-w-2xl space-y-0">
-          {(filter === 'all' || filter === 'imaging') &&
-            ultrasounds.map((u, i) => (
-              <UltrasoundEvent
-                key={u.id}
-                ultrasound={u}
-                isLast={filter === 'imaging' && i === ultrasounds.length - 1}
-              />
-            ))}
+          {filter === 'all' && (() => {
+            const merged = mergeAndSort(exams, ultrasounds)
+            if (merged.length === 0) return <EmptyState label="Nenhum exame registrado." />
+            return merged.map((item, i) => {
+              const isLast = i === merged.length - 1
+              if (item.kind === 'exam') {
+                return <ExamEvent key={item.data.id} exam={item.data} isLast={isLast} />
+              }
+              return <UltrasoundEvent key={item.data.id} ultrasound={item.data} isLast={isLast} />
+            })
+          })()}
 
-          {(filter === 'all' || filter === 'lab') &&
-            exams.map((e, i) => (
-              <ExamEvent
-                key={e.id}
-                exam={e}
-                isLast={i === exams.length - 1}
-              />
-            ))}
+          {filter === 'lab' && (
+            exams.length === 0
+              ? <EmptyState label="Nenhum exame laboratorial registrado." />
+              : exams.map((e, i) => (
+                  <ExamEvent key={e.id} exam={e} isLast={i === exams.length - 1} />
+                ))
+          )}
 
-          {filter === 'lab' && exams.length === 0 && (
-            <EmptyState label="Nenhum exame laboratorial registrado." />
-          )}
-          {filter === 'imaging' && ultrasounds.length === 0 && (
-            <EmptyState label="Nenhuma ultrassonografia registrada." />
-          )}
-          {filter === 'all' && exams.length === 0 && ultrasounds.length === 0 && (
-            <EmptyState label="Nenhum exame registrado." />
+          {filter === 'imaging' && (
+            ultrasounds.length === 0
+              ? <EmptyState label="Nenhuma ultrassonografia registrada." />
+              : ultrasounds.map((u, i) => (
+                  <UltrasoundEvent key={u.id} ultrasound={u} isLast={i === ultrasounds.length - 1} />
+                ))
           )}
         </div>
       </main>
+
+      <ExamFormDrawer
+        open={examDrawerOpen}
+        onClose={() => setExamDrawerOpen(false)}
+        onSaved={refreshData}
+        patientId={patient.id}
+        dum={patient.dum}
+      />
+
+      <UltrasoundFormDrawer
+        open={usgDrawerOpen}
+        onClose={() => setUsgDrawerOpen(false)}
+        onSaved={refreshData}
+        patientId={patient.id}
+        dum={patient.dum}
+      />
+      <PatientFormDrawer
+        open={editDrawerOpen}
+        onClose={() => setEditDrawerOpen(false)}
+        onSaved={handlePatientSaved}
+        initialValues={patient}
+      />
     </div>
   )
 }

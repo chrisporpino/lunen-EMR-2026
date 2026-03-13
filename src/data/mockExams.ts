@@ -89,3 +89,17 @@ export const mockExams: Exam[] = [
 
 export const getExamsByPatient = (patientId: string): Exam[] =>
   mockExams.filter((e) => e.patientId === patientId)
+
+export function addExam(exam: Exam): void {
+  mockExams.push(exam)
+}
+
+export function updateExam(updated: Exam): void {
+  const idx = mockExams.findIndex((e) => e.id === updated.id)
+  if (idx !== -1) mockExams[idx] = updated
+}
+
+export function deleteExam(id: string): void {
+  const idx = mockExams.findIndex((e) => e.id === id)
+  if (idx !== -1) mockExams.splice(idx, 1)
+}

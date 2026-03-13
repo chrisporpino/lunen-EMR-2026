@@ -1,9 +1,21 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { mockPatients } from '../data/mockPatients'
 import { RiskBadge } from '../components/ui'
+import { PatientFormDrawer } from '../components/forms'
 import { gestationalAge, calculateEDD, formatEDD, pregnancyProgress } from '../lib/gestation'
 
+const sortByEDD = (list: typeof mockPatients) =>
+  [...list].sort((a, b) => new Date(a.eddCalc).getTime() - new Date(b.eddCalc).getTime())
+
 export function PatientsPage() {
+  const [patients, setPatients] = useState(() => sortByEDD(mockPatients))
+  const [drawerOpen, setDrawerOpen] = useState(false)
+
+  function handleSaved() {
+    setPatients(sortByEDD([...mockPatients]))
+  }
+
   return (
     <div className="min-h-screen bg-bg">
       {/* Barra de navegação */}
@@ -28,24 +40,36 @@ export function PatientsPage() {
 
       <main className="max-w-6xl mx-auto px-6 py-8">
         {/* Cabeçalho da página */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">Gestantes</h1>
-          <p className="text-muted text-sm">
-            {mockPatients.length} gestações ativas
-          </p>
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-1">Gestantes</h1>
+            <p className="text-muted text-sm">
+              {patients.length} gestações ativas
+            </p>
+          </div>
+          <button
+            onClick={() => setDrawerOpen(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-primary-dark transition-colors shadow-card"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+            </svg>
+            <span className="hidden sm:inline">Nova Gestante</span>
+            <span className="sm:hidden">Nova</span>
+          </button>
         </div>
 
         {/* Cards de resumo */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-          <StatCard label="Total de Gestantes" value={mockPatients.length.toString()} icon="👥" />
-          <StatCard label="Alto Risco" value={mockPatients.filter(p => p.riskLevel === 'high').length.toString()} icon="⚠️" />
-          <StatCard label="Risco Intermediário" value={mockPatients.filter(p => p.riskLevel === 'medium').length.toString()} icon="🟡" />
-          <StatCard label="Baixo Risco" value={mockPatients.filter(p => p.riskLevel === 'low').length.toString()} icon="✅" />
+          <StatCard label="Total de Gestantes" value={patients.length.toString()} icon="👥" />
+          <StatCard label="Alto Risco" value={patients.filter(p => p.riskLevel === 'high').length.toString()} icon="⚠️" />
+          <StatCard label="Risco Intermediário" value={patients.filter(p => p.riskLevel === 'medium').length.toString()} icon="🟡" />
+          <StatCard label="Baixo Risco" value={patients.filter(p => p.riskLevel === 'low').length.toString()} icon="✅" />
         </div>
 
         {/* Lista de gestantes */}
         <div className="space-y-3">
-          {mockPatients.map((patient) => {
+          {patients.map((patient) => {
             const { weeks, days } = gestationalAge(patient.dum)
             const edd = calculateEDD(patient.dum)
             const progress = pregnancyProgress(weeks, days)
@@ -114,11 +138,17 @@ export function PatientsPage() {
           })}
         </div>
       </main>
+
+      <PatientFormDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        onSaved={handleSaved}
+      />
     </div>
   )
 }
 
-function StatCard({ label, value, icon }: { label: string; value: string; icon: string; accent?: string }) {
+function StatCard({ label, value, icon }: { label: string; value: string; icon: string }) {
   return (
     <div className="bg-surface rounded-card shadow-card p-4 flex items-center gap-3">
       <span className="text-2xl">{icon}</span>

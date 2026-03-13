@@ -1,10 +1,13 @@
+import { useState } from 'react'
 import { useParams, Navigate } from 'react-router-dom'
 import { mockPatients } from '../data/mockPatients'
-import { getConsultationsByPatient } from '../data/mockConsultations'
-import { getExamsByPatient } from '../data/mockExams'
+import { getConsultationsByPatient, deleteConsultation } from '../data/mockConsultations'
+import { getExamsByPatient, deleteExam } from '../data/mockExams'
 import { getUltrasoundsByPatient } from '../data/mockUltrasounds'
 import { PatientHeader } from '../components/patient'
 import { PregnancyTimeline } from '../components/timeline'
+import { WeightChart, UterineHeightChart } from '../components/charts'
+import { ConsultationFormDrawer, ExamFormDrawer, UltrasoundFormDrawer, PatientFormDrawer } from '../components/forms'
 import {
   calculateEDD,
   formatEDD,
@@ -13,22 +16,74 @@ import {
   getTrimesterLabel,
   formatDate,
 } from '../lib/gestation'
-import type { Patient } from '../types'
+import type { Consultation, Exam, Patient, Ultrasound } from '../types'
 
 export function PatientTimelinePage() {
   const { id } = useParams<{ id: string }>()
-  const patient = mockPatients.find((p) => p.id === id)
+
+  // Todos os hooks devem ser chamados antes de qualquer retorno condicional
+  const [patient, setPatient] = useState<Patient | undefined>(() =>
+    mockPatients.find((p) => p.id === id),
+  )
+  const [editDrawerOpen, setEditDrawerOpen] = useState(false)
+  const [consultationDrawerOpen, setConsultationDrawerOpen] = useState(false)
+  const [editingConsultation, setEditingConsultation] = useState<Consultation | undefined>(undefined)
+  const [editingExam, setEditingExam] = useState<Exam | undefined>(undefined)
+  const [examDrawerOpen, setExamDrawerOpen] = useState(false)
+  const [usgDrawerOpen, setUsgDrawerOpen] = useState(false)
+
+  const [consultations, setConsultations] = useState<Consultation[]>(() =>
+    patient ? getConsultationsByPatient(patient.id) : [],
+  )
+  const [exams, setExams] = useState<Exam[]>(() =>
+    patient ? getExamsByPatient(patient.id) : [],
+  )
+  const [ultrasounds, setUltrasounds] = useState<Ultrasound[]>(() =>
+    patient ? getUltrasoundsByPatient(patient.id) : [],
+  )
 
   if (!patient) return <Navigate to="/" replace />
 
-  const consultations = getConsultationsByPatient(patient.id)
-  const exams = getExamsByPatient(patient.id)
-  const ultrasounds = getUltrasoundsByPatient(patient.id)
+  function refreshData() {
+    setConsultations(getConsultationsByPatient(patient!.id))
+    setExams(getExamsByPatient(patient!.id))
+    setUltrasounds(getUltrasoundsByPatient(patient!.id))
+  }
+
+  function handlePatientSaved() {
+    const updated = mockPatients.find((p) => p.id === patient!.id)
+    if (updated) setPatient({ ...updated })
+  }
+
+  function handleEditConsultation(c: Consultation) {
+    setEditingConsultation(c)
+    setConsultationDrawerOpen(true)
+  }
+
+  function handleDeleteConsultation(id: string) {
+    deleteConsultation(id)
+    refreshData()
+  }
+
+  function handleEditExam(e: Exam) {
+    setEditingExam(e)
+    setExamDrawerOpen(true)
+  }
+
+  function handleDeleteExam(id: string) {
+    deleteExam(id)
+    refreshData()
+  }
+
+  // Derivados do estado — reativos automaticamente a qualquer nova inserção
   const totalRecords = consultations.length + exams.length + ultrasounds.length
 
-  const lastConsultation = consultations
-    .slice()
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]
+  const lastConsultation =
+    consultations.length > 0
+      ? [...consultations].sort(
+          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+        )[0]
+      : undefined
 
   const edd = calculateEDD(patient.dum)
   const { weeks, days } = gestationalAge(patient.dum)
@@ -46,7 +101,7 @@ export function PatientTimelinePage() {
 
   return (
     <div className="min-h-screen bg-bg">
-      <PatientHeader patient={patient} activeTab="timeline" />
+      <PatientHeader patient={patient} activeTab="timeline" onEdit={() => setEditDrawerOpen(true)} />
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
         {/* Faixa de resumo clínico */}
@@ -100,12 +155,27 @@ export function PatientTimelinePage() {
               <ConditionTags patient={patient} />
             </div>
             {lastConsultation && (
-              <div className={`mt-3 pt-3 border-t border-border flex items-center gap-2 ${bpAlert ? 'text-danger' : 'text-muted'}`}>
-                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+              <div
+                className={`mt-3 pt-3 border-t border-border flex items-center gap-2 ${bpAlert ? 'text-danger' : 'text-muted'}`}
+              >
+                <svg
+                  className="w-3.5 h-3.5 flex-shrink-0"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                  />
                 </svg>
-                <span className={`text-xs font-semibold ${bpAlert ? 'text-danger' : 'text-gray-700'}`}>
-                  PA {lastConsultation.vitalSigns.systolic}/{lastConsultation.vitalSigns.diastolic} mmHg
+                <span
+                  className={`text-xs font-semibold ${bpAlert ? 'text-danger' : 'text-gray-700'}`}
+                >
+                  PA {lastConsultation.vitalSigns.systolic}/
+                  {lastConsultation.vitalSigns.diastolic} mmHg
                 </span>
                 <span className="text-xs text-muted ml-auto">
                   {lastConsultation.gestationalWeeks}s
@@ -115,28 +185,116 @@ export function PatientTimelinePage() {
           </div>
         </div>
 
+        {/* Gráficos clínicos */}
+        <div className="mb-10">
+          <h2 className="text-base font-semibold text-gray-800 mb-4">Gráficos Clínicos</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <WeightChart consultations={consultations} />
+            <UterineHeightChart consultations={consultations} />
+          </div>
+        </div>
+
         {/* Cabeçalho da linha do tempo */}
-        <div className="flex items-center gap-3 mb-6">
+        <div className="flex flex-wrap items-center gap-3 mb-3">
           <h2 className="text-base font-semibold text-gray-800">Linha do Tempo Gestacional</h2>
           <span className="text-xs text-muted bg-border/50 px-2.5 py-1 rounded-pill">
             {totalRecords} registros
           </span>
-          <div className="flex items-center gap-3 ml-auto">
-            <Legend color="bg-primary" label="Consulta" />
-            <Legend color="bg-accent" label="Exame" />
-            <Legend color="bg-purple-400" label="USG" />
+          <div className="ml-auto flex items-center gap-2">
+            <ActionButton
+              label="Consulta"
+              color="primary"
+              onClick={() => { setEditingConsultation(undefined); setConsultationDrawerOpen(true) }}
+            />
+            <ActionButton
+              label="Exame"
+              color="accent"
+              onClick={() => setExamDrawerOpen(true)}
+            />
+            <ActionButton
+              label="USG"
+              color="purple"
+              onClick={() => setUsgDrawerOpen(true)}
+            />
           </div>
         </div>
 
-        {/* Linha do tempo — foco principal */}
+        {/* Legenda */}
+        <div className="flex items-center gap-3 mb-6">
+          <Legend color="bg-primary" label="Consulta" />
+          <Legend color="bg-accent" label="Exame" />
+          <Legend color="bg-purple-400" label="USG" />
+        </div>
+
+        {/* Linha do tempo */}
         <PregnancyTimeline
           consultations={consultations}
           exams={exams}
           ultrasounds={ultrasounds}
           dum={patient.dum}
+          onEditConsultation={handleEditConsultation}
+          onDeleteConsultation={handleDeleteConsultation}
         />
       </main>
+
+      <ConsultationFormDrawer
+        open={consultationDrawerOpen}
+        onClose={() => { setConsultationDrawerOpen(false); setEditingConsultation(undefined) }}
+        onSaved={refreshData}
+        patientId={patient.id}
+        dum={patient.dum}
+        initialValues={editingConsultation}
+      />
+      <ExamFormDrawer
+        open={examDrawerOpen}
+        onClose={() => setExamDrawerOpen(false)}
+        onSaved={refreshData}
+        patientId={patient.id}
+        dum={patient.dum}
+      />
+      <UltrasoundFormDrawer
+        open={usgDrawerOpen}
+        onClose={() => setUsgDrawerOpen(false)}
+        onSaved={refreshData}
+        patientId={patient.id}
+        dum={patient.dum}
+      />
+      <PatientFormDrawer
+        open={editDrawerOpen}
+        onClose={() => setEditDrawerOpen(false)}
+        onSaved={handlePatientSaved}
+        initialValues={patient}
+      />
     </div>
+  )
+}
+
+function ActionButton({
+  label,
+  color,
+  onClick,
+}: {
+  label: string
+  color: 'primary' | 'accent' | 'purple'
+  onClick: () => void
+}) {
+  const cls =
+    color === 'primary'
+      ? 'bg-primary/10 text-primary border-primary/20 hover:bg-primary/15'
+      : color === 'accent'
+        ? 'bg-accent/15 text-primary border-accent/20 hover:bg-accent/25'
+        : 'bg-purple-50 text-purple-600 border-purple-200 hover:bg-purple-100'
+
+  return (
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-xl border transition-colors ${cls}`}
+    >
+      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+      </svg>
+      {label}
+    </button>
   )
 }
 

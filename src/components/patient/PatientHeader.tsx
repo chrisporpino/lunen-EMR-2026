@@ -6,6 +6,7 @@ import { gestationalAge, formatDate, calculateEDD, formatEDD } from '../../lib/g
 interface Props {
   patient: Patient
   activeTab?: 'timeline' | 'consultations' | 'exams'
+  onEdit?: () => void
 }
 
 const tabs = [
@@ -14,7 +15,7 @@ const tabs = [
   { id: 'exams', label: 'Exames', path: '/exams' },
 ]
 
-export function PatientHeader({ patient, activeTab = 'timeline' }: Props) {
+export function PatientHeader({ patient, activeTab = 'timeline', onEdit }: Props) {
   const { weeks, days } = gestationalAge(patient.dum)
   const edd = calculateEDD(patient.dum)
 
@@ -54,7 +55,7 @@ export function PatientHeader({ patient, activeTab = 'timeline' }: Props) {
             </div>
           </div>
 
-          {/* Informações gestacionais */}
+          {/* Informações gestacionais + ação */}
           <div className="text-right hidden sm:block">
             <div className="flex items-baseline gap-1.5 justify-end">
               <span className="text-3xl font-bold text-primary">{weeks}</span>
@@ -66,8 +67,19 @@ export function PatientHeader({ patient, activeTab = 'timeline' }: Props) {
             <p className="text-sm text-muted mt-0.5">
               DPP <span className="font-medium text-gray-700">{formatEDD(edd)}</span>
             </p>
-            <div className="mt-1.5">
+            <div className="mt-1.5 flex items-center justify-end gap-2">
               <RiskBadge level={patient.riskLevel} size="sm" />
+              {onEdit && (
+                <button
+                  onClick={onEdit}
+                  className="text-xs text-muted hover:text-primary transition-colors flex items-center gap-1"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                  Editar cadastro
+                </button>
+              )}
             </div>
           </div>
         </div>

@@ -109,3 +109,7 @@ export const mockUltrasounds: Ultrasound[] = [
 
 export const getUltrasoundsByPatient = (patientId: string): Ultrasound[] =>
   mockUltrasounds.filter((u) => u.patientId === patientId)
+
+export function addUltrasound(ultrasound: Ultrasound): void {
+  mockUltrasounds.push(ultrasound)
+}

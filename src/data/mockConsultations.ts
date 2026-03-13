@@ -116,3 +116,17 @@ export const mockConsultations: Consultation[] = [
 
 export const getConsultationsByPatient = (patientId: string): Consultation[] =>
   mockConsultations.filter((c) => c.patientId === patientId)
+
+export function addConsultation(consultation: Consultation): void {
+  mockConsultations.push(consultation)
+}
+
+export function updateConsultation(updated: Consultation): void {
+  const idx = mockConsultations.findIndex((c) => c.id === updated.id)
+  if (idx !== -1) mockConsultations[idx] = updated
+}
+
+export function deleteConsultation(id: string): void {
+  const idx = mockConsultations.findIndex((c) => c.id === id)
+  if (idx !== -1) mockConsultations.splice(idx, 1)
+}

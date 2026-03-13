@@ -44,9 +44,13 @@ interface Props {
   exams: Exam[]
   ultrasounds: Ultrasound[]
   dum: string
+  onEditConsultation?: (c: Consultation) => void
+  onDeleteConsultation?: (id: string) => void
+  onEditExam?: (e: Exam) => void
+  onDeleteExam?: (id: string) => void
 }
 
-export function PregnancyTimeline({ consultations, exams, ultrasounds, dum }: Props) {
+export function PregnancyTimeline({ consultations, exams, ultrasounds, dum, onEditConsultation, onDeleteConsultation, onEditExam, onDeleteExam }: Props) {
   const today = new Date()
   const dumDate = new Date(dum + 'T00:00:00')
 
@@ -100,11 +104,21 @@ export function PregnancyTimeline({ consultations, exams, ultrasounds, dum }: Pr
               key={`c-${event.data.id}`}
               consultation={event.data}
               isLast={isLast}
+              onEdit={onEditConsultation}
+              onDelete={onDeleteConsultation}
             />
           )
         }
         if (event.type === 'exam') {
-          return <ExamEvent key={`e-${event.data.id}`} exam={event.data} isLast={isLast} />
+          return (
+            <ExamEvent
+              key={`e-${event.data.id}`}
+              exam={event.data}
+              isLast={isLast}
+              onEdit={onEditExam}
+              onDelete={onDeleteExam}
+            />
+          )
         }
         if (event.type === 'ultrasound') {
           return (

@@ -41,3 +41,14 @@ export const mockPatients: Patient[] = [
     address: 'Rua da Consolação, 50 – Rio de Janeiro, RJ',
   },
 ]
+
+export function addPatient(patient: Patient): void {
+  mockPatients.push(patient)
+}
+
+export function updatePatient(id: string, updates: Partial<Patient>): void {
+  const idx = mockPatients.findIndex((p) => p.id === id)
+  if (idx !== -1) {
+    mockPatients[idx] = { ...mockPatients[idx], ...updates }
+  }
+}
