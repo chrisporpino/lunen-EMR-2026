@@ -209,7 +209,7 @@ export function PatientTimelinePage() {
             <ActionButton
               label="Exame"
               color="accent"
-              onClick={() => setExamDrawerOpen(true)}
+              onClick={() => { setEditingExam(undefined); setExamDrawerOpen(true) }}
             />
             <ActionButton
               label="USG"
@@ -234,6 +234,8 @@ export function PatientTimelinePage() {
           dum={patient.dum}
           onEditConsultation={handleEditConsultation}
           onDeleteConsultation={handleDeleteConsultation}
+          onEditExam={handleEditExam}
+          onDeleteExam={handleDeleteExam}
         />
       </main>
 
@@ -247,10 +249,11 @@ export function PatientTimelinePage() {
       />
       <ExamFormDrawer
         open={examDrawerOpen}
-        onClose={() => setExamDrawerOpen(false)}
+        onClose={() => { setExamDrawerOpen(false); setEditingExam(undefined) }}
         onSaved={refreshData}
         patientId={patient.id}
         dum={patient.dum}
+        initialValues={editingExam}
       />
       <UltrasoundFormDrawer
         open={usgDrawerOpen}
