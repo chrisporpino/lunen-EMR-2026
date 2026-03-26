@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useParams, Navigate } from 'react-router-dom'
 import { mockPatients } from '../data/mockPatients'
 import { getExamsByPatient, deleteExam } from '../data/mockExams'
-import { getUltrasoundsByPatient } from '../data/mockUltrasounds'
+import { getUltrasoundsByPatient, deleteUltrasound } from '../data/mockUltrasounds'
 import { PatientHeader } from '../components/patient'
 import { ExamEvent, UltrasoundEvent } from '../components/timeline'
 import { ExamFormDrawer, UltrasoundFormDrawer, PatientFormDrawer } from '../components/forms'
@@ -35,6 +35,7 @@ export function PatientExams() {
   const [examDrawerOpen, setExamDrawerOpen] = useState(false)
   const [editingExam, setEditingExam] = useState<Exam | undefined>(undefined)
   const [usgDrawerOpen, setUsgDrawerOpen] = useState(false)
+  const [editingUltrasound, setEditingUltrasound] = useState<Ultrasound | undefined>(undefined)
   const [exams, setExams] = useState<Exam[]>(() =>
     patient ? sortByDate(getExamsByPatient(patient.id)) : [],
   )
@@ -61,6 +62,16 @@ export function PatientExams() {
 
   function handleDeleteExam(id: string) {
     deleteExam(id)
+    refreshData()
+  }
+
+  function handleEditUltrasound(u: Ultrasound) {
+    setEditingUltrasound(u)
+    setUsgDrawerOpen(true)
+  }
+
+  function handleDeleteUltrasound(id: string) {
+    deleteUltrasound(id)
     refreshData()
   }
 
@@ -95,7 +106,7 @@ export function PatientExams() {
               Novo Exame
             </button>
             <button
-              onClick={() => setUsgDrawerOpen(true)}
+              onClick={() => { setEditingUltrasound(undefined); setUsgDrawerOpen(true) }}
               className="flex items-center gap-1.5 px-3 py-2 bg-purple-50 text-purple-600 text-xs font-semibold rounded-xl hover:bg-purple-100 transition-colors border border-purple-200"
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -140,7 +151,15 @@ export function PatientExams() {
                   />
                 )
               }
-              return <UltrasoundEvent key={item.data.id} ultrasound={item.data} isLast={isLast} />
+              return (
+                <UltrasoundEvent
+                  key={item.data.id}
+                  ultrasound={item.data}
+                  isLast={isLast}
+                  onEdit={handleEditUltrasound}
+                  onDelete={handleDeleteUltrasound}
+                />
+              )
             })
           })()}
 
@@ -162,7 +181,13 @@ export function PatientExams() {
             ultrasounds.length === 0
               ? <EmptyState label="Nenhuma ultrassonografia registrada." />
               : ultrasounds.map((u, i) => (
-                  <UltrasoundEvent key={u.id} ultrasound={u} isLast={i === ultrasounds.length - 1} />
+                  <UltrasoundEvent
+                    key={u.id}
+                    ultrasound={u}
+                    isLast={i === ultrasounds.length - 1}
+                    onEdit={handleEditUltrasound}
+                    onDelete={handleDeleteUltrasound}
+                  />
                 ))
           )}
         </div>
@@ -179,10 +204,11 @@ export function PatientExams() {
 
       <UltrasoundFormDrawer
         open={usgDrawerOpen}
-        onClose={() => setUsgDrawerOpen(false)}
+        onClose={() => { setUsgDrawerOpen(false); setEditingUltrasound(undefined) }}
         onSaved={refreshData}
         patientId={patient.id}
         dum={patient.dum}
+        initialValues={editingUltrasound}
       />
       <PatientFormDrawer
         open={editDrawerOpen}

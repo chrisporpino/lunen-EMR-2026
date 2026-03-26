@@ -5,6 +5,8 @@ import type { Ultrasound } from '../../types'
 interface Props {
   ultrasound: Ultrasound
   isLast?: boolean
+  onEdit?: (u: Ultrasound) => void
+  onDelete?: (id: string) => void
 }
 
 const typeLabels: Record<Ultrasound['type'], string> = {
@@ -14,8 +16,9 @@ const typeLabels: Record<Ultrasound['type'], string> = {
   transvaginal: 'Transvaginal',
 }
 
-export function UltrasoundEvent({ ultrasound: u, isLast = false }: Props) {
+export function UltrasoundEvent({ ultrasound: u, isLast = false, onEdit, onDelete }: Props) {
   const [expanded, setExpanded] = useState(false)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
   const showBiometry = u.biometry.bpd > 0
 
   return (
@@ -43,9 +46,33 @@ export function UltrasoundEvent({ ultrasound: u, isLast = false }: Props) {
               </div>
               <p className="text-sm font-semibold text-gray-900">{formatDate(u.date)}</p>
             </div>
-            <span className="inline-block bg-purple-50 text-purple-500 text-xs font-bold px-2.5 py-1 rounded-pill border border-purple-100">
-              {u.gestationalWeeks}s {u.gestationalDays > 0 ? `+ ${u.gestationalDays}d` : ''}
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="inline-block bg-purple-50 text-purple-500 text-xs font-bold px-2.5 py-1 rounded-pill border border-purple-100">
+                {u.gestationalWeeks}s {u.gestationalDays > 0 ? `+ ${u.gestationalDays}d` : ''}
+              </span>
+              {onEdit && (
+                <button
+                  onClick={() => { setConfirmingDelete(false); onEdit(u) }}
+                  title="Editar ultrassonografia"
+                  className="p-1.5 rounded-lg text-muted hover:text-purple-500 hover:bg-purple-50 transition-colors"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                </button>
+              )}
+              {onDelete && (
+                <button
+                  onClick={() => setConfirmingDelete(true)}
+                  title="Excluir ultrassonografia"
+                  className="p-1.5 rounded-lg text-muted hover:text-danger hover:bg-danger/8 transition-colors"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Métricas principais — sempre visíveis */}
@@ -95,6 +122,26 @@ export function UltrasoundEvent({ ultrasound: u, isLast = false }: Props) {
                 </p>
               )}
             </>
+          )}
+
+          {confirmingDelete && (
+            <div className="mt-3 pt-3 border-t border-danger/20 flex items-center justify-between gap-3">
+              <p className="text-xs font-medium text-danger">Excluir esta ultrassonografia permanentemente?</p>
+              <div className="flex gap-2 flex-shrink-0">
+                <button
+                  onClick={() => setConfirmingDelete(false)}
+                  className="px-3 py-1.5 text-xs font-medium rounded-lg border border-border text-muted hover:bg-bg transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => onDelete!(u.id)}
+                  className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-danger text-white hover:bg-danger/90 transition-colors"
+                >
+                  Excluir
+                </button>
+              </div>
+            </div>
           )}
         </div>
       </div>

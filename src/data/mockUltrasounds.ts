@@ -113,3 +113,13 @@ export const getUltrasoundsByPatient = (patientId: string): Ultrasound[] =>
 export function addUltrasound(ultrasound: Ultrasound): void {
   mockUltrasounds.push(ultrasound)
 }
+
+export function updateUltrasound(updated: Ultrasound): void {
+  const idx = mockUltrasounds.findIndex((u) => u.id === updated.id)
+  if (idx !== -1) mockUltrasounds[idx] = updated
+}
+
+export function deleteUltrasound(id: string): void {
+  const idx = mockUltrasounds.findIndex((u) => u.id === id)
+  if (idx !== -1) mockUltrasounds.splice(idx, 1)
+}

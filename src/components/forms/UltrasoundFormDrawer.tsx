@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { UltrasoundFormValues } from '../../types/forms'
+import type { Ultrasound } from '../../types'
 import { gestationalAge } from '../../lib/gestation'
-import { addUltrasound } from '../../data/mockUltrasounds'
+import { addUltrasound, updateUltrasound } from '../../data/mockUltrasounds'
 import { Drawer } from './Drawer'
 import { Field, inputCls, FormSection, DrawerFooter } from './FormField'
 
@@ -11,6 +12,7 @@ interface Props {
   onSaved: () => void
   patientId: string
   dum: string
+  initialValues?: Ultrasound
 }
 
 const EMPTY: UltrasoundFormValues = {
@@ -35,9 +37,34 @@ const USG_TYPES = [
   { value: 'transvaginal', label: 'Transvaginal' },
 ] as const
 
-export function UltrasoundFormDrawer({ open, onClose, onSaved, patientId, dum }: Props) {
+function usgToForm(u: Ultrasound): UltrasoundFormValues {
+  return {
+    date: u.date,
+    type: u.type,
+    fetalHeartRate: u.fetalHeartRate,
+    bpd: u.biometry.bpd,
+    hc: u.biometry.hc,
+    ac: u.biometry.ac,
+    fl: u.biometry.fl,
+    estimatedWeight: u.estimatedWeight,
+    placentaLocation: u.placentaLocation === 'N/A' ? '' : u.placentaLocation,
+    amnioticFluid: u.amnioticFluid === 'N/A' ? '' : u.amnioticFluid,
+    fetalPresentation: u.fetalPresentation === 'N/A' ? '' : u.fetalPresentation,
+    notes: u.notes,
+  }
+}
+
+export function UltrasoundFormDrawer({ open, onClose, onSaved, patientId, dum, initialValues }: Props) {
+  const isEditing = !!initialValues
   const [form, setForm] = useState<UltrasoundFormValues>(EMPTY)
   const [errors, setErrors] = useState<Partial<Record<keyof UltrasoundFormValues, string>>>({})
+
+  useEffect(() => {
+    if (open) {
+      setForm(initialValues ? usgToForm(initialValues) : EMPTY)
+      setErrors({})
+    }
+  }, [open, initialValues])
 
   function set<K extends keyof UltrasoundFormValues>(key: K, value: UltrasoundFormValues[K]) {
     setForm((prev) => ({ ...prev, [key]: value }))
@@ -61,9 +88,9 @@ export function UltrasoundFormDrawer({ open, onClose, onSaved, patientId, dum }:
   function handleSubmit() {
     if (!validate()) return
     const { weeks, days } = ga ?? { weeks: 0, days: 0 }
-    addUltrasound({
-      id: 'u-' + Date.now().toString(36),
-      patientId,
+    const record: Ultrasound = {
+      id: initialValues?.id ?? 'u-' + Date.now().toString(36),
+      patientId: initialValues?.patientId ?? patientId,
       date: form.date,
       gestationalWeeks: weeks,
       gestationalDays: days,
@@ -80,19 +107,17 @@ export function UltrasoundFormDrawer({ open, onClose, onSaved, patientId, dum }:
       amnioticFluid: form.amnioticFluid || 'N/A',
       fetalPresentation: form.fetalPresentation || 'N/A',
       notes: form.notes,
-    })
-    reset()
+    }
+    if (isEditing) {
+      updateUltrasound(record)
+    } else {
+      addUltrasound(record)
+    }
     onSaved()
     onClose()
   }
 
-  function reset() {
-    setForm(EMPTY)
-    setErrors({})
-  }
-
   function handleClose() {
-    reset()
     onClose()
   }
 
@@ -100,9 +125,9 @@ export function UltrasoundFormDrawer({ open, onClose, onSaved, patientId, dum }:
     <Drawer
       open={open}
       onClose={handleClose}
-      title="Nova Ultrassonografia"
+      title={isEditing ? 'Editar Ultrassonografia' : 'Nova Ultrassonografia'}
       subtitle={ga ? `IG calculada: ${ga.weeks}s ${ga.days > 0 ? `+ ${ga.days}d` : ''}` : 'Preencha os dados do exame'}
-      footer={<DrawerFooter onClose={handleClose} onSubmit={handleSubmit} />}
+      footer={<DrawerFooter onClose={handleClose} onSubmit={handleSubmit} submitLabel={isEditing ? 'Salvar alterações' : 'Salvar'} />}
     >
       <div className="space-y-5">
         <div className="grid grid-cols-2 gap-4">

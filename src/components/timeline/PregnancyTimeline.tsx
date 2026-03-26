@@ -48,9 +48,11 @@ interface Props {
   onDeleteConsultation?: (id: string) => void
   onEditExam?: (e: Exam) => void
   onDeleteExam?: (id: string) => void
+  onEditUltrasound?: (u: Ultrasound) => void
+  onDeleteUltrasound?: (id: string) => void
 }
 
-export function PregnancyTimeline({ consultations, exams, ultrasounds, dum, onEditConsultation, onDeleteConsultation, onEditExam, onDeleteExam }: Props) {
+export function PregnancyTimeline({ consultations, exams, ultrasounds, dum, onEditConsultation, onDeleteConsultation, onEditExam, onDeleteExam, onEditUltrasound, onDeleteUltrasound }: Props) {
   const today = new Date()
   const dumDate = new Date(dum + 'T00:00:00')
 
@@ -126,6 +128,8 @@ export function PregnancyTimeline({ consultations, exams, ultrasounds, dum, onEd
               key={`u-${event.data.id}`}
               ultrasound={event.data}
               isLast={isLast}
+              onEdit={onEditUltrasound}
+              onDelete={onDeleteUltrasound}
             />
           )
         }

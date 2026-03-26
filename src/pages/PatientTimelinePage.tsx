@@ -3,7 +3,7 @@ import { useParams, Navigate } from 'react-router-dom'
 import { mockPatients } from '../data/mockPatients'
 import { getConsultationsByPatient, deleteConsultation } from '../data/mockConsultations'
 import { getExamsByPatient, deleteExam } from '../data/mockExams'
-import { getUltrasoundsByPatient } from '../data/mockUltrasounds'
+import { getUltrasoundsByPatient, deleteUltrasound } from '../data/mockUltrasounds'
 import { PatientHeader } from '../components/patient'
 import { PregnancyTimeline } from '../components/timeline'
 import { WeightChart, UterineHeightChart } from '../components/charts'
@@ -31,6 +31,7 @@ export function PatientTimelinePage() {
   const [editingExam, setEditingExam] = useState<Exam | undefined>(undefined)
   const [examDrawerOpen, setExamDrawerOpen] = useState(false)
   const [usgDrawerOpen, setUsgDrawerOpen] = useState(false)
+  const [editingUltrasound, setEditingUltrasound] = useState<Ultrasound | undefined>(undefined)
 
   const [consultations, setConsultations] = useState<Consultation[]>(() =>
     patient ? getConsultationsByPatient(patient.id) : [],
@@ -72,6 +73,16 @@ export function PatientTimelinePage() {
 
   function handleDeleteExam(id: string) {
     deleteExam(id)
+    refreshData()
+  }
+
+  function handleEditUltrasound(u: Ultrasound) {
+    setEditingUltrasound(u)
+    setUsgDrawerOpen(true)
+  }
+
+  function handleDeleteUltrasound(id: string) {
+    deleteUltrasound(id)
     refreshData()
   }
 
@@ -214,7 +225,7 @@ export function PatientTimelinePage() {
             <ActionButton
               label="USG"
               color="purple"
-              onClick={() => setUsgDrawerOpen(true)}
+              onClick={() => { setEditingUltrasound(undefined); setUsgDrawerOpen(true) }}
             />
           </div>
         </div>
@@ -236,6 +247,8 @@ export function PatientTimelinePage() {
           onDeleteConsultation={handleDeleteConsultation}
           onEditExam={handleEditExam}
           onDeleteExam={handleDeleteExam}
+          onEditUltrasound={handleEditUltrasound}
+          onDeleteUltrasound={handleDeleteUltrasound}
         />
       </main>
 
@@ -257,10 +270,11 @@ export function PatientTimelinePage() {
       />
       <UltrasoundFormDrawer
         open={usgDrawerOpen}
-        onClose={() => setUsgDrawerOpen(false)}
+        onClose={() => { setUsgDrawerOpen(false); setEditingUltrasound(undefined) }}
         onSaved={refreshData}
         patientId={patient.id}
         dum={patient.dum}
+        initialValues={editingUltrasound}
       />
       <PatientFormDrawer
         open={editDrawerOpen}
