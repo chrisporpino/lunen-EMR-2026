@@ -4,10 +4,12 @@ import { mockPatients } from '../data/mockPatients'
 import { getConsultationsByPatient, deleteConsultation } from '../data/mockConsultations'
 import { getExamsByPatient, deleteExam } from '../data/mockExams'
 import { getUltrasoundsByPatient, deleteUltrasound } from '../data/mockUltrasounds'
-import { PatientHeader } from '../components/patient'
+import { PatientHeader, ModoConsulta } from '../components/patient'
 import { PregnancyTimeline } from '../components/timeline'
 import { WeightChart, UterineHeightChart } from '../components/charts'
 import { ConsultationFormDrawer, ExamFormDrawer, UltrasoundFormDrawer, PatientFormDrawer } from '../components/forms'
+import { AlertDialog } from '../components/ui'
+import { archivePatient } from '../data/mockPatients'
 import {
   calculateEDD,
   formatEDD,
@@ -16,6 +18,7 @@ import {
   getTrimesterLabel,
   formatDate,
 } from '../lib/gestation'
+import { Toast, useToast } from '../components/ui'
 import type { Consultation, Exam, Patient, Ultrasound } from '../types'
 
 export function PatientTimelinePage() {
@@ -32,6 +35,8 @@ export function PatientTimelinePage() {
   const [examDrawerOpen, setExamDrawerOpen] = useState(false)
   const [usgDrawerOpen, setUsgDrawerOpen] = useState(false)
   const [editingUltrasound, setEditingUltrasound] = useState<Ultrasound | undefined>(undefined)
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false)
+  const { toastMessage, showToast } = useToast()
 
   const [consultations, setConsultations] = useState<Consultation[]>(() =>
     patient ? getConsultationsByPatient(patient.id) : [],
@@ -54,6 +59,13 @@ export function PatientTimelinePage() {
   function handlePatientSaved() {
     const updated = mockPatients.find((p) => p.id === patient!.id)
     if (updated) setPatient({ ...updated })
+    showToast('Gestante atualizada com sucesso')
+  }
+
+  function handleArchiveConfirm() {
+    archivePatient(patient!.id)
+    setPatient((prev) => prev ? { ...prev, status: 'arquivada' } : prev)
+    showToast('Acompanhamento encerrado com sucesso')
   }
 
   function handleEditConsultation(c: Consultation) {
@@ -61,9 +73,16 @@ export function PatientTimelinePage() {
     setConsultationDrawerOpen(true)
   }
 
+  function handleConsultationSaved() {
+    const msg = editingConsultation ? 'Consulta atualizada com sucesso' : 'Consulta registrada com sucesso'
+    refreshData()
+    showToast(msg)
+  }
+
   function handleDeleteConsultation(id: string) {
     deleteConsultation(id)
     refreshData()
+    showToast('Consulta excluída com sucesso')
   }
 
   function handleEditExam(e: Exam) {
@@ -71,9 +90,16 @@ export function PatientTimelinePage() {
     setExamDrawerOpen(true)
   }
 
+  function handleExamSaved() {
+    const msg = editingExam ? 'Exame atualizado com sucesso' : 'Exame registrado com sucesso'
+    refreshData()
+    showToast(msg)
+  }
+
   function handleDeleteExam(id: string) {
     deleteExam(id)
     refreshData()
+    showToast('Exame excluído com sucesso')
   }
 
   function handleEditUltrasound(u: Ultrasound) {
@@ -81,9 +107,16 @@ export function PatientTimelinePage() {
     setUsgDrawerOpen(true)
   }
 
+  function handleUltrasoundSaved() {
+    const msg = editingUltrasound ? 'Ultrassonografia atualizada com sucesso' : 'Ultrassonografia registrada com sucesso'
+    refreshData()
+    showToast(msg)
+  }
+
   function handleDeleteUltrasound(id: string) {
     deleteUltrasound(id)
     refreshData()
+    showToast('Ultrassonografia excluída com sucesso')
   }
 
   // Derivados do estado — reativos automaticamente a qualquer nova inserção
@@ -112,9 +145,30 @@ export function PatientTimelinePage() {
 
   return (
     <div className="min-h-screen bg-bg">
-      <PatientHeader patient={patient} activeTab="timeline" onEdit={() => setEditDrawerOpen(true)} />
+      <PatientHeader
+        patient={patient}
+        activeTab="timeline"
+        onEdit={() => setEditDrawerOpen(true)}
+        onArchive={() => setArchiveDialogOpen(true)}
+      />
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
+        {/* Modo Consulta — suporte à decisão clínica */}
+        <ModoConsulta
+          patient={patient}
+          consultations={consultations}
+          exams={exams}
+        />
+
+        {/* Separador: histórico clínico completo */}
+        <div className="flex items-center gap-3 mb-6 mt-8">
+          <div className="flex-1 h-px bg-border" />
+          <span className="text-xs text-muted uppercase tracking-widest font-medium">
+            Histórico Clínico
+          </span>
+          <div className="flex-1 h-px bg-border" />
+        </div>
+
         {/* Faixa de resumo clínico */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
           {/* Card IG */}
@@ -255,7 +309,7 @@ export function PatientTimelinePage() {
       <ConsultationFormDrawer
         open={consultationDrawerOpen}
         onClose={() => { setConsultationDrawerOpen(false); setEditingConsultation(undefined) }}
-        onSaved={refreshData}
+        onSaved={handleConsultationSaved}
         patientId={patient.id}
         dum={patient.dum}
         initialValues={editingConsultation}
@@ -263,7 +317,7 @@ export function PatientTimelinePage() {
       <ExamFormDrawer
         open={examDrawerOpen}
         onClose={() => { setExamDrawerOpen(false); setEditingExam(undefined) }}
-        onSaved={refreshData}
+        onSaved={handleExamSaved}
         patientId={patient.id}
         dum={patient.dum}
         initialValues={editingExam}
@@ -271,7 +325,7 @@ export function PatientTimelinePage() {
       <UltrasoundFormDrawer
         open={usgDrawerOpen}
         onClose={() => { setUsgDrawerOpen(false); setEditingUltrasound(undefined) }}
-        onSaved={refreshData}
+        onSaved={handleUltrasoundSaved}
         patientId={patient.id}
         dum={patient.dum}
         initialValues={editingUltrasound}
@@ -282,6 +336,15 @@ export function PatientTimelinePage() {
         onSaved={handlePatientSaved}
         initialValues={patient}
       />
+      <AlertDialog
+        open={archiveDialogOpen}
+        title="Encerrar acompanhamento"
+        message={`Deseja encerrar o acompanhamento de ${patient.name}? Os dados serão preservados e a paciente ficará arquivada.`}
+        confirmLabel="Encerrar"
+        onClose={() => setArchiveDialogOpen(false)}
+        onConfirm={handleArchiveConfirm}
+      />
+      <Toast message={toastMessage} />
     </div>
   )
 }

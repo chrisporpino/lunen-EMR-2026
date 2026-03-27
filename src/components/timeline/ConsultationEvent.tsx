@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { formatDate } from '../../lib/gestation'
 import type { Consultation } from '../../types'
+import { AlertDialog } from '../ui/AlertDialog'
 
 interface Props {
   consultation: Consultation
@@ -24,7 +25,7 @@ const typeLabels: Record<string, string> = {
 
 export function ConsultationEvent({ consultation: c, isLast = false, onEdit, onDelete }: Props) {
   const [expanded, setExpanded] = useState(false)
-  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const bpAlert = c.vitalSigns.systolic >= 140 || c.vitalSigns.diastolic >= 90
 
   return (
@@ -64,7 +65,7 @@ export function ConsultationEvent({ consultation: c, isLast = false, onEdit, onD
               </span>
               {onEdit && (
                 <button
-                  onClick={() => { setConfirmingDelete(false); onEdit(c) }}
+                  onClick={() => onEdit(c)}
                   title="Editar consulta"
                   className="p-1.5 rounded-lg text-muted hover:text-primary hover:bg-primary/8 transition-colors"
                 >
@@ -75,7 +76,7 @@ export function ConsultationEvent({ consultation: c, isLast = false, onEdit, onD
               )}
               {onDelete && (
                 <button
-                  onClick={() => setConfirmingDelete(true)}
+                  onClick={() => setDeleteOpen(true)}
                   title="Excluir consulta"
                   className="p-1.5 rounded-lg text-muted hover:text-danger hover:bg-danger/8 transition-colors"
                 >
@@ -134,29 +135,17 @@ export function ConsultationEvent({ consultation: c, isLast = false, onEdit, onD
               )}
             </>
           )}
-
-          {/* Confirmação de exclusão inline */}
-          {confirmingDelete && (
-            <div className="mt-3 pt-3 border-t border-danger/20 flex items-center justify-between gap-3">
-              <p className="text-xs font-medium text-danger">Excluir esta consulta permanentemente?</p>
-              <div className="flex gap-2 flex-shrink-0">
-                <button
-                  onClick={() => setConfirmingDelete(false)}
-                  className="px-3 py-1.5 text-xs font-medium rounded-lg border border-border text-muted hover:bg-bg transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={() => onDelete!(c.id)}
-                  className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-danger text-white hover:bg-danger/90 transition-colors"
-                >
-                  Excluir
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       </div>
+
+      <AlertDialog
+        open={deleteOpen}
+        title="Excluir consulta"
+        message="Esta ação é permanente e não pode ser desfeita."
+        confirmLabel="Excluir"
+        onClose={() => setDeleteOpen(false)}
+        onConfirm={() => onDelete!(c.id)}
+      />
     </div>
   )
 }

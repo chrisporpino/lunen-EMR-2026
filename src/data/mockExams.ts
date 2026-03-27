@@ -1,6 +1,9 @@
 import type { Exam } from '../types'
+import { loadFromStorage, saveToStorage } from '../lib/storage'
 
-export const mockExams: Exam[] = [
+const STORAGE_KEY = 'lunen:exams'
+
+const SEED_EXAMS: Exam[] = [
   // Paciente p1 - Maria Clara
   {
     id: 'e1',
@@ -87,19 +90,28 @@ export const mockExams: Exam[] = [
   },
 ]
 
+export const mockExams: Exam[] = loadFromStorage(STORAGE_KEY, SEED_EXAMS)
+
 export const getExamsByPatient = (patientId: string): Exam[] =>
   mockExams.filter((e) => e.patientId === patientId)
 
 export function addExam(exam: Exam): void {
   mockExams.push(exam)
+  saveToStorage(STORAGE_KEY, mockExams)
 }
 
 export function updateExam(updated: Exam): void {
   const idx = mockExams.findIndex((e) => e.id === updated.id)
-  if (idx !== -1) mockExams[idx] = updated
+  if (idx !== -1) {
+    mockExams[idx] = updated
+    saveToStorage(STORAGE_KEY, mockExams)
+  }
 }
 
 export function deleteExam(id: string): void {
   const idx = mockExams.findIndex((e) => e.id === id)
-  if (idx !== -1) mockExams.splice(idx, 1)
+  if (idx !== -1) {
+    mockExams.splice(idx, 1)
+    saveToStorage(STORAGE_KEY, mockExams)
+  }
 }

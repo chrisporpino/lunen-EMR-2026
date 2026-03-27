@@ -1,6 +1,9 @@
 import type { Consultation } from '../types'
+import { loadFromStorage, saveToStorage } from '../lib/storage'
 
-export const mockConsultations: Consultation[] = [
+const STORAGE_KEY = 'lunen:consultations'
+
+const SEED_CONSULTATIONS: Consultation[] = [
   {
     id: 'c1',
     patientId: 'p1',
@@ -70,7 +73,6 @@ export const mockConsultations: Consultation[] = [
     notes:
       'Pressão arterial levemente elevada. Iniciado monitoramento para hipertensão gestacional. Solicitada proteinúria de 24 horas e Doppler obstétrico.',
   },
-  // Consultas da p2
   {
     id: 'c4',
     patientId: 'p2',
@@ -90,7 +92,6 @@ export const mockConsultations: Consultation[] = [
     fetalHeartRate: 0,
     notes: 'Primeira consulta, gestação muito precoce confirmada. Boas condições gerais. Prescrito ácido fólico e vitaminas.',
   },
-  // Consultas da p3
   {
     id: 'c5',
     patientId: 'p3',
@@ -114,19 +115,28 @@ export const mockConsultations: Consultation[] = [
   },
 ]
 
+export const mockConsultations: Consultation[] = loadFromStorage(STORAGE_KEY, SEED_CONSULTATIONS)
+
 export const getConsultationsByPatient = (patientId: string): Consultation[] =>
   mockConsultations.filter((c) => c.patientId === patientId)
 
 export function addConsultation(consultation: Consultation): void {
   mockConsultations.push(consultation)
+  saveToStorage(STORAGE_KEY, mockConsultations)
 }
 
 export function updateConsultation(updated: Consultation): void {
   const idx = mockConsultations.findIndex((c) => c.id === updated.id)
-  if (idx !== -1) mockConsultations[idx] = updated
+  if (idx !== -1) {
+    mockConsultations[idx] = updated
+    saveToStorage(STORAGE_KEY, mockConsultations)
+  }
 }
 
 export function deleteConsultation(id: string): void {
   const idx = mockConsultations.findIndex((c) => c.id === id)
-  if (idx !== -1) mockConsultations.splice(idx, 1)
+  if (idx !== -1) {
+    mockConsultations.splice(idx, 1)
+    saveToStorage(STORAGE_KEY, mockConsultations)
+  }
 }

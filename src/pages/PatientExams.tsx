@@ -6,6 +6,8 @@ import { getUltrasoundsByPatient, deleteUltrasound } from '../data/mockUltrasoun
 import { PatientHeader } from '../components/patient'
 import { ExamEvent, UltrasoundEvent } from '../components/timeline'
 import { ExamFormDrawer, UltrasoundFormDrawer, PatientFormDrawer } from '../components/forms'
+import { Toast, useToast, AlertDialog } from '../components/ui'
+import { archivePatient } from '../data/mockPatients'
 import type { Exam, Patient, Ultrasound } from '../types'
 
 type Filter = 'all' | 'lab' | 'imaging'
@@ -42,6 +44,8 @@ export function PatientExams() {
   const [ultrasounds, setUltrasounds] = useState<Ultrasound[]>(() =>
     patient ? sortByDate(getUltrasoundsByPatient(patient.id)) : [],
   )
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false)
+  const { toastMessage, showToast } = useToast()
 
   if (!patient) return <Navigate to="/" replace />
 
@@ -53,6 +57,13 @@ export function PatientExams() {
   function handlePatientSaved() {
     const updated = mockPatients.find((p) => p.id === patient!.id)
     if (updated) setPatient({ ...updated })
+    showToast('Gestante atualizada com sucesso')
+  }
+
+  function handleArchiveConfirm() {
+    archivePatient(patient!.id)
+    setPatient((prev) => prev ? { ...prev, status: 'arquivada' } : prev)
+    showToast('Acompanhamento encerrado com sucesso')
   }
 
   function handleEditExam(e: Exam) {
@@ -60,9 +71,16 @@ export function PatientExams() {
     setExamDrawerOpen(true)
   }
 
+  function handleExamSaved() {
+    const msg = editingExam ? 'Exame atualizado com sucesso' : 'Exame registrado com sucesso'
+    refreshData()
+    showToast(msg)
+  }
+
   function handleDeleteExam(id: string) {
     deleteExam(id)
     refreshData()
+    showToast('Exame excluído com sucesso')
   }
 
   function handleEditUltrasound(u: Ultrasound) {
@@ -70,9 +88,16 @@ export function PatientExams() {
     setUsgDrawerOpen(true)
   }
 
+  function handleUltrasoundSaved() {
+    const msg = editingUltrasound ? 'Ultrassonografia atualizada com sucesso' : 'Ultrassonografia registrada com sucesso'
+    refreshData()
+    showToast(msg)
+  }
+
   function handleDeleteUltrasound(id: string) {
     deleteUltrasound(id)
     refreshData()
+    showToast('Ultrassonografia excluída com sucesso')
   }
 
   const filterLabels: Record<Filter, string> = {
@@ -83,7 +108,12 @@ export function PatientExams() {
 
   return (
     <div className="min-h-screen bg-bg">
-      <PatientHeader patient={patient} activeTab="exams" onEdit={() => setEditDrawerOpen(true)} />
+      <PatientHeader
+        patient={patient}
+        activeTab="exams"
+        onEdit={() => setEditDrawerOpen(true)}
+        onArchive={() => setArchiveDialogOpen(true)}
+      />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
         <div className="flex flex-wrap items-center gap-3 mb-6">
@@ -196,7 +226,7 @@ export function PatientExams() {
       <ExamFormDrawer
         open={examDrawerOpen}
         onClose={() => { setExamDrawerOpen(false); setEditingExam(undefined) }}
-        onSaved={refreshData}
+        onSaved={handleExamSaved}
         patientId={patient.id}
         dum={patient.dum}
         initialValues={editingExam}
@@ -205,7 +235,7 @@ export function PatientExams() {
       <UltrasoundFormDrawer
         open={usgDrawerOpen}
         onClose={() => { setUsgDrawerOpen(false); setEditingUltrasound(undefined) }}
-        onSaved={refreshData}
+        onSaved={handleUltrasoundSaved}
         patientId={patient.id}
         dum={patient.dum}
         initialValues={editingUltrasound}
@@ -216,6 +246,15 @@ export function PatientExams() {
         onSaved={handlePatientSaved}
         initialValues={patient}
       />
+      <AlertDialog
+        open={archiveDialogOpen}
+        title="Encerrar acompanhamento"
+        message={`Deseja encerrar o acompanhamento de ${patient.name}? Os dados serão preservados e a paciente ficará arquivada.`}
+        confirmLabel="Encerrar"
+        onClose={() => setArchiveDialogOpen(false)}
+        onConfirm={handleArchiveConfirm}
+      />
+      <Toast message={toastMessage} />
     </div>
   )
 }

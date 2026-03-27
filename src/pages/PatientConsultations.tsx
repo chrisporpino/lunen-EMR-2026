@@ -5,6 +5,8 @@ import { getConsultationsByPatient, deleteConsultation } from '../data/mockConsu
 import { PatientHeader } from '../components/patient'
 import { ConsultationEvent } from '../components/timeline'
 import { ConsultationFormDrawer, PatientFormDrawer } from '../components/forms'
+import { Toast, useToast, AlertDialog } from '../components/ui'
+import { archivePatient } from '../data/mockPatients'
 import type { Consultation, Patient } from '../types'
 
 export function PatientConsultations() {
@@ -24,6 +26,8 @@ export function PatientConsultations() {
         )
       : [],
   )
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false)
+  const { toastMessage, showToast } = useToast()
 
   if (!patient) return <Navigate to="/" replace />
 
@@ -40,19 +44,38 @@ export function PatientConsultations() {
     setDrawerOpen(true)
   }
 
+  function handleConsultationSaved() {
+    const msg = editingConsultation ? 'Consulta atualizada com sucesso' : 'Consulta registrada com sucesso'
+    refreshConsultations()
+    showToast(msg)
+  }
+
   function handleDeleteConsultation(id: string) {
     deleteConsultation(id)
     refreshConsultations()
+    showToast('Consulta excluída com sucesso')
   }
 
   function handlePatientSaved() {
     const updated = mockPatients.find((p) => p.id === patient!.id)
     if (updated) setPatient({ ...updated })
+    showToast('Gestante atualizada com sucesso')
+  }
+
+  function handleArchiveConfirm() {
+    archivePatient(patient!.id)
+    setPatient((prev) => prev ? { ...prev, status: 'arquivada' } : prev)
+    showToast('Acompanhamento encerrado com sucesso')
   }
 
   return (
     <div className="min-h-screen bg-bg">
-      <PatientHeader patient={patient} activeTab="consultations" onEdit={() => setEditDrawerOpen(true)} />
+      <PatientHeader
+        patient={patient}
+        activeTab="consultations"
+        onEdit={() => setEditDrawerOpen(true)}
+        onArchive={() => setArchiveDialogOpen(true)}
+      />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
         <div className="flex items-center justify-between mb-6">
@@ -91,7 +114,7 @@ export function PatientConsultations() {
       <ConsultationFormDrawer
         open={drawerOpen}
         onClose={() => { setDrawerOpen(false); setEditingConsultation(undefined) }}
-        onSaved={refreshConsultations}
+        onSaved={handleConsultationSaved}
         patientId={patient.id}
         dum={patient.dum}
         initialValues={editingConsultation}
@@ -102,6 +125,15 @@ export function PatientConsultations() {
         onSaved={handlePatientSaved}
         initialValues={patient}
       />
+      <AlertDialog
+        open={archiveDialogOpen}
+        title="Encerrar acompanhamento"
+        message={`Deseja encerrar o acompanhamento de ${patient.name}? Os dados serão preservados e a paciente ficará arquivada.`}
+        confirmLabel="Encerrar"
+        onClose={() => setArchiveDialogOpen(false)}
+        onConfirm={handleArchiveConfirm}
+      />
+      <Toast message={toastMessage} />
     </div>
   )
 }

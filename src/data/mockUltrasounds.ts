@@ -1,6 +1,9 @@
 import type { Ultrasound } from '../types'
+import { loadFromStorage, saveToStorage } from '../lib/storage'
 
-export const mockUltrasounds: Ultrasound[] = [
+const STORAGE_KEY = 'lunen:ultrasounds'
+
+const SEED_ULTRASOUNDS: Ultrasound[] = [
   {
     id: 'u1',
     patientId: 'p1',
@@ -107,19 +110,28 @@ export const mockUltrasounds: Ultrasound[] = [
   },
 ]
 
+export const mockUltrasounds: Ultrasound[] = loadFromStorage(STORAGE_KEY, SEED_ULTRASOUNDS)
+
 export const getUltrasoundsByPatient = (patientId: string): Ultrasound[] =>
   mockUltrasounds.filter((u) => u.patientId === patientId)
 
 export function addUltrasound(ultrasound: Ultrasound): void {
   mockUltrasounds.push(ultrasound)
+  saveToStorage(STORAGE_KEY, mockUltrasounds)
 }
 
 export function updateUltrasound(updated: Ultrasound): void {
   const idx = mockUltrasounds.findIndex((u) => u.id === updated.id)
-  if (idx !== -1) mockUltrasounds[idx] = updated
+  if (idx !== -1) {
+    mockUltrasounds[idx] = updated
+    saveToStorage(STORAGE_KEY, mockUltrasounds)
+  }
 }
 
 export function deleteUltrasound(id: string): void {
   const idx = mockUltrasounds.findIndex((u) => u.id === id)
-  if (idx !== -1) mockUltrasounds.splice(idx, 1)
+  if (idx !== -1) {
+    mockUltrasounds.splice(idx, 1)
+    saveToStorage(STORAGE_KEY, mockUltrasounds)
+  }
 }

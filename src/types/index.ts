@@ -12,6 +12,7 @@ export interface Patient {
   parity: number
   phone: string
   address: string
+  status: 'ativa' | 'arquivada'
 }
 
 export interface VitalSigns {

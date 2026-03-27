@@ -108,6 +108,7 @@ export function PatientFormDrawer({ open, onClose, onSaved, initialValues }: Pro
         parity: form.parity,
         phone: form.phone,
         address: form.address,
+        status: 'ativa',
       })
     }
     onSaved()

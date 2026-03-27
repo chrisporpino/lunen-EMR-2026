@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { formatDate } from '../../lib/gestation'
 import type { Ultrasound } from '../../types'
+import { AlertDialog } from '../ui/AlertDialog'
 
 interface Props {
   ultrasound: Ultrasound
@@ -18,7 +19,7 @@ const typeLabels: Record<Ultrasound['type'], string> = {
 
 export function UltrasoundEvent({ ultrasound: u, isLast = false, onEdit, onDelete }: Props) {
   const [expanded, setExpanded] = useState(false)
-  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const showBiometry = u.biometry.bpd > 0
 
   return (
@@ -52,7 +53,7 @@ export function UltrasoundEvent({ ultrasound: u, isLast = false, onEdit, onDelet
               </span>
               {onEdit && (
                 <button
-                  onClick={() => { setConfirmingDelete(false); onEdit(u) }}
+                  onClick={() => onEdit(u)}
                   title="Editar ultrassonografia"
                   className="p-1.5 rounded-lg text-muted hover:text-purple-500 hover:bg-purple-50 transition-colors"
                 >
@@ -63,7 +64,7 @@ export function UltrasoundEvent({ ultrasound: u, isLast = false, onEdit, onDelet
               )}
               {onDelete && (
                 <button
-                  onClick={() => setConfirmingDelete(true)}
+                  onClick={() => setDeleteOpen(true)}
                   title="Excluir ultrassonografia"
                   className="p-1.5 rounded-lg text-muted hover:text-danger hover:bg-danger/8 transition-colors"
                 >
@@ -123,28 +124,17 @@ export function UltrasoundEvent({ ultrasound: u, isLast = false, onEdit, onDelet
               )}
             </>
           )}
-
-          {confirmingDelete && (
-            <div className="mt-3 pt-3 border-t border-danger/20 flex items-center justify-between gap-3">
-              <p className="text-xs font-medium text-danger">Excluir esta ultrassonografia permanentemente?</p>
-              <div className="flex gap-2 flex-shrink-0">
-                <button
-                  onClick={() => setConfirmingDelete(false)}
-                  className="px-3 py-1.5 text-xs font-medium rounded-lg border border-border text-muted hover:bg-bg transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={() => onDelete!(u.id)}
-                  className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-danger text-white hover:bg-danger/90 transition-colors"
-                >
-                  Excluir
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       </div>
+
+      <AlertDialog
+        open={deleteOpen}
+        title="Excluir ultrassonografia"
+        message="Esta ação é permanente e não pode ser desfeita."
+        confirmLabel="Excluir"
+        onClose={() => setDeleteOpen(false)}
+        onConfirm={() => onDelete!(u.id)}
+      />
     </div>
   )
 }

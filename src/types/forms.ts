@@ -21,6 +21,7 @@ export interface ConsultationFormValues {
   heartRate: number
   temperature: number
   weight: number
+  height?: number
   uterineHeight: number
   fetalHeartRate: number
   fetalPresentation: string

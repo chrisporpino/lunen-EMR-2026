@@ -1,6 +1,9 @@
 import type { Patient } from '../types'
+import { loadFromStorage, saveToStorage } from '../lib/storage'
 
-export const mockPatients: Patient[] = [
+const STORAGE_KEY = 'lunen:patients'
+
+const SEED_PATIENTS: Patient[] = [
   {
     id: 'p1',
     name: 'Maria Clara da Silva',
@@ -13,6 +16,7 @@ export const mockPatients: Patient[] = [
     parity: 1,
     phone: '+55 11 99234-5678',
     address: 'Rua das Flores, 142 – São Paulo, SP',
+    status: 'ativa',
   },
   {
     id: 'p2',
@@ -26,6 +30,7 @@ export const mockPatients: Patient[] = [
     parity: 0,
     phone: '+55 11 98765-4321',
     address: 'Av. Paulista, 900 – São Paulo, SP',
+    status: 'ativa',
   },
   {
     id: 'p3',
@@ -39,16 +44,27 @@ export const mockPatients: Patient[] = [
     parity: 2,
     phone: '+55 21 97654-3210',
     address: 'Rua da Consolação, 50 – Rio de Janeiro, RJ',
+    status: 'ativa',
   },
 ]
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const mockPatients: Patient[] = (loadFromStorage(STORAGE_KEY, SEED_PATIENTS) as any[])
+  .map((p) => ({ status: 'ativa', ...p }))
+
 export function addPatient(patient: Patient): void {
   mockPatients.push(patient)
+  saveToStorage(STORAGE_KEY, mockPatients)
 }
 
 export function updatePatient(id: string, updates: Partial<Patient>): void {
   const idx = mockPatients.findIndex((p) => p.id === id)
   if (idx !== -1) {
     mockPatients[idx] = { ...mockPatients[idx], ...updates }
+    saveToStorage(STORAGE_KEY, mockPatients)
   }
+}
+
+export function archivePatient(id: string): void {
+  updatePatient(id, { status: 'arquivada' })
 }
