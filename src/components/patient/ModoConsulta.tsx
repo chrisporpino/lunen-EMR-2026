@@ -1,5 +1,5 @@
 import type { Patient, Consultation, Exam } from '../../types'
-import { gestationalAge, calculateEDD, formatEDD } from '../../lib/gestation'
+import { gestationalAge, calculateEDD } from '../../lib/gestation'
 import {
   deriveAlerts,
   deriveCondutas,
@@ -9,7 +9,6 @@ import {
   formatDaysAgo,
   type ConsultaAlert,
 } from '../../lib/consultaMode'
-import { RiskBadge } from '../ui/RiskBadge'
 
 interface Props {
   patient: Patient
@@ -18,13 +17,12 @@ interface Props {
 }
 
 export function ModoConsulta({ patient, consultations, exams }: Props) {
-  const { weeks, days } = gestationalAge(patient.dum)
+  const { weeks } = gestationalAge(patient.dum)
   const edd = calculateEDD(patient.dum)
   const daysRemaining = Math.max(
     0,
     Math.ceil((edd.getTime() - Date.now()) / (1000 * 60 * 60 * 24)),
   )
-
   const sorted = [...consultations].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
   )
@@ -47,45 +45,52 @@ export function ModoConsulta({ patient, consultations, exams }: Props) {
         <div className="flex-1 h-px bg-border" />
       </div>
 
-      {/* ── Zone 1 — Contexto Gestacional ─────────────────────────────────── */}
-      <div className="bg-surface rounded-card shadow-card p-4">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <span className="text-base font-bold text-gray-900 truncate">{patient.name}</span>
-              {patient.status === 'arquivada' ? (
-                <span className="text-xs text-muted border border-muted/20 px-2 py-0.5 rounded-pill flex-shrink-0">
-                  Arquivada
-                </span>
-              ) : (
-                <RiskBadge level={patient.riskLevel} size="sm" />
-              )}
-            </div>
-            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted">
-              <span>G{patient.gravidity}P{patient.parity}</span>
-              <span className="text-muted/40">·</span>
-              <span>{patient.bloodType}</span>
-              <span className="text-muted/40">·</span>
-              <span className={lastConsultDays !== null && lastConsultDays > 30 ? 'text-warning font-medium' : ''}>
-                {lastConsultDays !== null
-                  ? `Última consulta ${formatDaysAgo(lastConsultDays)}`
-                  : 'Sem consultas registradas'}
-              </span>
-            </div>
+      {/* ── Zone 1 — Briefing para hoje ──────────────────────────────────── */}
+      <div className="bg-surface rounded-card shadow-card px-4 py-3">
+        <p className="text-xs font-bold text-muted uppercase tracking-widest mb-3">
+          Briefing para hoje
+        </p>
+        <div className="grid grid-cols-3 divide-x divide-border">
+          {/* Última consulta */}
+          <div className="pr-4">
+            <p className={`text-sm font-semibold leading-snug ${
+              lastConsultDays !== null && lastConsultDays > 30 ? 'text-warning' : 'text-gray-800'
+            }`}>
+              {lastConsultDays !== null ? formatDaysAgo(lastConsultDays) : '—'}
+            </p>
+            <p className="text-xs text-muted mt-0.5">
+              {lastConsultDays !== null ? 'última consulta' : 'primeira consulta'}
+            </p>
           </div>
 
-          <div className="text-right flex-shrink-0">
-            <div className="flex items-baseline gap-1 justify-end">
-              <span className="text-2xl font-bold text-primary">{weeks}</span>
-              <span className="text-sm font-medium text-primary/80">sem</span>
-              {days > 0 && (
-                <span className="text-sm text-muted">+{days}d</span>
-              )}
-            </div>
-            <p className="text-xs text-muted leading-snug">DPP {formatEDD(edd)}</p>
-            <p className="text-xs text-muted/70 leading-snug">
-              {daysRemaining > 0 ? `${daysRemaining} dias` : 'data atingida'}
+          {/* Dias até o parto */}
+          <div className="px-4">
+            <p className="text-sm font-semibold text-gray-800 leading-snug">
+              {daysRemaining > 0 ? daysRemaining : '—'}
             </p>
+            <p className="text-xs text-muted mt-0.5">
+              {daysRemaining > 0 ? 'dias p/ o parto' : 'data atingida'}
+            </p>
+          </div>
+
+          {/* Situação */}
+          <div className="pl-4">
+            {(() => {
+              const hasDanger = alerts.some(a => a.severity === 'danger')
+              const alertColor = alerts.length === 0
+                ? 'text-gray-800'
+                : hasDanger ? 'text-danger' : 'text-warning'
+              return (
+                <>
+                  <p className={`text-sm font-semibold leading-snug ${alertColor}`}>
+                    {alerts.length === 0
+                      ? 'sem alertas'
+                      : `${alerts.length} alerta${alerts.length > 1 ? 's' : ''}`}
+                  </p>
+                  <p className="text-xs text-muted mt-0.5">situação hoje</p>
+                </>
+              )
+            })()}
           </div>
         </div>
       </div>

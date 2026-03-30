@@ -63,7 +63,7 @@ Estabeleceu a estrutura visual completa do produto:
 - **Correção: `height` preservado na edição de consultas** — `ConsultationFormValues` agora inclui `height?: number`
 - **Modo Consulta V1** — superfície de suporte à decisão clínica renderizada no topo de `PatientTimelinePage`:
   - `src/lib/consultaMode.ts` — módulo puro: `deriveAlerts`, `deriveCondutas`, `deriveActions`, `getLastTwoConsultations`, `daysAgo`, `formatDaysAgo`
-  - `src/components/patient/ModoConsulta.tsx` — 4 zonas: Contexto Gestacional, Alertas Ativos, Conduta Sugerida, O que mudou, Ações Necessárias
+  - `src/components/patient/ModoConsulta.tsx` — 4 zonas: Briefing para hoje, Alertas Ativos, Conduta Sugerida, O que mudou, Ações Necessárias
   - Regras de alerta: PA ≥ 140/90, BCF fora de 120–160 bpm, exame `altered`, exame `pending` > 14 dias, sem consulta > 30 dias
   - Regras de ação: TOTG em semana ≥ 28, exame alterado sem consulta posterior, exame pendente > 7 dias, retorno em atraso
 
@@ -76,7 +76,7 @@ Estabeleceu a estrutura visual completa do produto:
 ### Modo Consulta — `PatientTimelinePage` (topo)
 Superfície de suporte à decisão clínica renderizada acima do histórico em `PatientTimelinePage`. Composta por 4 zonas derivadas deterministicamente dos dados existentes.
 
-**Zone 1 — Contexto Gestacional:** nome, risco, G/P, tipo sanguíneo, IG, DPP, dias restantes, tempo decorrido desde a última consulta (relativo: "há 14 dias"). A cor do elapsed time muda para `text-warning` quando > 30 dias.
+**Zone 1 — Briefing para hoje:** grid de 3 sinais compactos, responde as 3 perguntas de prontidão clínica imediata: (1) **Última consulta** — "há X dias" com `text-warning` se > 30 dias, "—" se sem histórico; (2) **Dias p/ o parto** — contador numérico de urgência (não a data, que já está no header); (3) **Situação hoje** — "sem alertas" em cinza, "X alerta(s)" em `text-danger` se houver alerta de danger, `text-warning` caso contrário. Layout: `grid-cols-3` com `divide-x`.
 
 **Zone 2 — Alertas Ativos:** invisível quando não há alertas. Regras: PA ≥ 140/90, BCF fora de 120–160 bpm, exame `altered`, exame `pending` há > 14 dias, sem consulta há > 30 dias. Danger antes de warning. Máx. 4.
 
