@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wc -l /c/Users/Lunee/OneDrive/Documents/GitHub/lunen-EMR-2026/src/**/*.tsx /c/Users/Lunee/OneDrive/Documents/GitHub/lunen-EMR-2026/src/**/*.ts)"
+    ]
+  }
+}
