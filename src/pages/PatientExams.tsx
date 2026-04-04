@@ -1,13 +1,13 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, Navigate } from 'react-router-dom'
-import { mockPatients } from '../data/mockPatients'
-import { getExamsByPatient, deleteExam } from '../data/mockExams'
-import { getUltrasoundsByPatient, deleteUltrasound } from '../data/mockUltrasounds'
+import { getPatient, archivePatient } from '../services/patients'
+import { getExamsByPatient, deleteExam } from '../services/exams'
+import { getUltrasoundsByPatient, deleteUltrasound } from '../services/ultrasounds'
 import { PatientHeader } from '../components/patient'
 import { ExamEvent, UltrasoundEvent } from '../components/timeline'
 import { ExamFormDrawer, UltrasoundFormDrawer, PatientFormDrawer } from '../components/forms'
 import { Toast, useToast, AlertDialog } from '../components/ui'
-import { archivePatient } from '../data/mockPatients'
+import { useAuth } from '../contexts/AuthContext'
 import type { Exam, Patient, Ultrasound } from '../types'
 
 type Filter = 'all' | 'lab' | 'imaging'
@@ -15,9 +15,6 @@ type Filter = 'all' | 'lab' | 'imaging'
 type MergedItem =
   | { kind: 'exam'; data: Exam }
   | { kind: 'ultrasound'; data: Ultrasound }
-
-const sortByDate = <T extends { date: string }>(items: T[]): T[] =>
-  [...items].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
 const mergeAndSort = (exams: Exam[], ultrasounds: Ultrasound[]): MergedItem[] =>
   [
@@ -27,84 +24,93 @@ const mergeAndSort = (exams: Exam[], ultrasounds: Ultrasound[]): MergedItem[] =>
 
 export function PatientExams() {
   const { id } = useParams<{ id: string }>()
+  const { user } = useAuth()
 
-  // Hooks must be called before any early return
-  const [patient, setPatient] = useState<Patient | undefined>(() =>
-    mockPatients.find((p) => p.id === id),
-  )
+  const [patient, setPatient] = useState<Patient | null | undefined>(undefined)
+  const [exams, setExams] = useState<Exam[]>([])
+  const [ultrasounds, setUltrasounds] = useState<Ultrasound[]>([])
+  const [loading, setLoading] = useState(true)
   const [editDrawerOpen, setEditDrawerOpen] = useState(false)
   const [filter, setFilter] = useState<Filter>('all')
   const [examDrawerOpen, setExamDrawerOpen] = useState(false)
   const [editingExam, setEditingExam] = useState<Exam | undefined>(undefined)
   const [usgDrawerOpen, setUsgDrawerOpen] = useState(false)
   const [editingUltrasound, setEditingUltrasound] = useState<Ultrasound | undefined>(undefined)
-  const [exams, setExams] = useState<Exam[]>(() =>
-    patient ? sortByDate(getExamsByPatient(patient.id)) : [],
-  )
-  const [ultrasounds, setUltrasounds] = useState<Ultrasound[]>(() =>
-    patient ? sortByDate(getUltrasoundsByPatient(patient.id)) : [],
-  )
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false)
   const { toastMessage, showToast } = useToast()
 
-  if (!patient) return <Navigate to="/" replace />
+  const loadData = useCallback(async () => {
+    if (!id) return
+    setLoading(true)
+    try {
+      const [p, exs, usgs] = await Promise.all([
+        getPatient(id),
+        getExamsByPatient(id),
+        getUltrasoundsByPatient(id),
+      ])
+      setPatient(p)
+      setExams(exs)
+      setUltrasounds(usgs)
+    } finally {
+      setLoading(false)
+    }
+  }, [id])
 
-  function refreshData() {
-    setExams(sortByDate(getExamsByPatient(patient!.id)))
-    setUltrasounds(sortByDate(getUltrasoundsByPatient(patient!.id)))
+  useEffect(() => { loadData() }, [loadData])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-bg flex items-center justify-center">
+        <svg className="w-6 h-6 text-primary animate-spin" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+        </svg>
+      </div>
+    )
   }
 
-  function handlePatientSaved() {
-    const updated = mockPatients.find((p) => p.id === patient!.id)
-    if (updated) setPatient({ ...updated })
+  if (!patient) return <Navigate to="/" replace />
+
+  async function handlePatientSaved() {
+    const updated = await getPatient(patient!.id)
+    if (updated) setPatient(updated)
     showToast('Gestante atualizada com sucesso')
   }
 
-  function handleArchiveConfirm() {
-    archivePatient(patient!.id)
+  async function handleArchiveConfirm() {
+    if (!user) return
+    await archivePatient(patient!.id, user.id)
     setPatient((prev) => prev ? { ...prev, status: 'arquivada' } : prev)
     showToast('Acompanhamento encerrado com sucesso')
   }
 
-  function handleEditExam(e: Exam) {
-    setEditingExam(e)
-    setExamDrawerOpen(true)
-  }
-
-  function handleExamSaved() {
-    const msg = editingExam ? 'Exame atualizado com sucesso' : 'Exame registrado com sucesso'
-    refreshData()
+  async function handleExamSaved() {
+    const msg = editingExam ? 'Exame atualizado' : 'Exame registrado'
+    const exs = await getExamsByPatient(patient!.id)
+    setExams(exs)
     showToast(msg)
   }
 
-  function handleDeleteExam(id: string) {
-    deleteExam(id)
-    refreshData()
-    showToast('Exame excluído com sucesso')
+  async function handleDeleteExam(eid: string) {
+    await deleteExam(eid)
+    setExams((prev) => prev.filter((e) => e.id !== eid))
+    showToast('Exame excluído')
   }
 
-  function handleEditUltrasound(u: Ultrasound) {
-    setEditingUltrasound(u)
-    setUsgDrawerOpen(true)
-  }
-
-  function handleUltrasoundSaved() {
-    const msg = editingUltrasound ? 'Ultrassonografia atualizada com sucesso' : 'Ultrassonografia registrada com sucesso'
-    refreshData()
+  async function handleUltrasoundSaved() {
+    const msg = editingUltrasound ? 'Ultrassonografia atualizada' : 'Ultrassonografia registrada'
+    const usgs = await getUltrasoundsByPatient(patient!.id)
+    setUltrasounds(usgs)
     showToast(msg)
   }
 
-  function handleDeleteUltrasound(id: string) {
-    deleteUltrasound(id)
-    refreshData()
-    showToast('Ultrassonografia excluída com sucesso')
+  async function handleDeleteUltrasound(uid: string) {
+    await deleteUltrasound(uid)
+    setUltrasounds((prev) => prev.filter((u) => u.id !== uid))
+    showToast('Ultrassonografia excluída')
   }
 
-  const filterLabels: Record<Filter, string> = {
-    all: 'Todos',
-    lab: 'Laboratório',
-    imaging: 'Imagem',
-  }
+  const filterLabels: Record<Filter, string> = { all: 'Todos', lab: 'Laboratório', imaging: 'Imagem' }
 
   return (
     <div className="min-h-screen bg-bg">
@@ -124,7 +130,6 @@ export function PatientExams() {
             </p>
           </div>
 
-          {/* Botões de ação */}
           <div className="flex items-center gap-2">
             <button
               onClick={() => { setEditingExam(undefined); setExamDrawerOpen(true) }}
@@ -146,16 +151,13 @@ export function PatientExams() {
             </button>
           </div>
 
-          {/* Filtros */}
           <div className="flex gap-1 bg-bg border border-border rounded-xl p-1">
             {(['all', 'lab', 'imaging'] as Filter[]).map((f) => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
                 className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-all ${
-                  filter === f
-                    ? 'bg-surface shadow-card text-primary'
-                    : 'text-muted hover:text-gray-700'
+                  filter === f ? 'bg-surface shadow-card text-primary' : 'text-muted hover:text-gray-700'
                 }`}
               >
                 {filterLabels[f]}
@@ -176,7 +178,7 @@ export function PatientExams() {
                     key={item.data.id}
                     exam={item.data}
                     isLast={isLast}
-                    onEdit={handleEditExam}
+                    onEdit={(e) => { setEditingExam(e); setExamDrawerOpen(true) }}
                     onDelete={handleDeleteExam}
                   />
                 )
@@ -186,7 +188,7 @@ export function PatientExams() {
                   key={item.data.id}
                   ultrasound={item.data}
                   isLast={isLast}
-                  onEdit={handleEditUltrasound}
+                  onEdit={(u) => { setEditingUltrasound(u); setUsgDrawerOpen(true) }}
                   onDelete={handleDeleteUltrasound}
                 />
               )
@@ -201,7 +203,7 @@ export function PatientExams() {
                     key={e.id}
                     exam={e}
                     isLast={i === exams.length - 1}
-                    onEdit={handleEditExam}
+                    onEdit={(ex) => { setEditingExam(ex); setExamDrawerOpen(true) }}
                     onDelete={handleDeleteExam}
                   />
                 ))
@@ -215,7 +217,7 @@ export function PatientExams() {
                     key={u.id}
                     ultrasound={u}
                     isLast={i === ultrasounds.length - 1}
-                    onEdit={handleEditUltrasound}
+                    onEdit={(us) => { setEditingUltrasound(us); setUsgDrawerOpen(true) }}
                     onDelete={handleDeleteUltrasound}
                   />
                 ))
@@ -231,7 +233,6 @@ export function PatientExams() {
         dum={patient.dum}
         initialValues={editingExam}
       />
-
       <UltrasoundFormDrawer
         open={usgDrawerOpen}
         onClose={() => { setUsgDrawerOpen(false); setEditingUltrasound(undefined) }}

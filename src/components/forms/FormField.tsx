@@ -38,26 +38,35 @@ export function FormSection({ label }: { label: string }) {
   )
 }
 
-export function DrawerFooter({ onClose, onSubmit, submitLabel = 'Salvar' }: {
+export function DrawerFooter({ onClose, onSubmit, submitLabel = 'Salvar', loading = false }: {
   onClose: () => void
   onSubmit: () => void
   submitLabel?: string
+  loading?: boolean
 }) {
   return (
     <div className="flex gap-3">
       <button
         type="button"
         onClick={onClose}
-        className="flex-1 px-4 py-2.5 rounded-xl border border-border text-sm font-medium text-muted hover:bg-bg transition-colors"
+        disabled={loading}
+        className="flex-1 px-4 py-2.5 rounded-xl border border-border text-sm font-medium text-muted hover:bg-bg transition-colors disabled:opacity-50"
       >
         Cancelar
       </button>
       <button
         type="button"
         onClick={onSubmit}
-        className="flex-1 px-4 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary-dark transition-colors"
+        disabled={loading}
+        className="flex-1 px-4 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary-dark transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
       >
-        {submitLabel}
+        {loading && (
+          <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+        )}
+        {loading ? 'Salvando...' : submitLabel}
       </button>
     </div>
   )

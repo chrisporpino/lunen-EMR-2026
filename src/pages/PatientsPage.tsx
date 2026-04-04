@@ -1,21 +1,35 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { mockPatients } from '../data/mockPatients'
+import { useState, useEffect, useCallback } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { listPatients } from '../services/patients'
 import { RiskBadge, Toast, useToast } from '../components/ui'
 import { PatientFormDrawer } from '../components/forms'
 import { gestationalAge, calculateEDD, formatEDD, pregnancyProgress } from '../lib/gestation'
-
-const sortByEDD = (list: typeof mockPatients) =>
-  [...list].sort((a, b) => new Date(a.eddCalc).getTime() - new Date(b.eddCalc).getTime())
+import { useAuth } from '../contexts/AuthContext'
+import type { Patient } from '../types'
 
 type StatusFilter = 'ativa' | 'arquivada'
 
 export function PatientsPage() {
-  const [patients, setPatients] = useState(() => sortByEDD(mockPatients))
+  const { signOut, profile } = useAuth()
+  const navigate = useNavigate()
+  const [patients, setPatients] = useState<Patient[]>([])
+  const [loading, setLoading] = useState(true)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [filter, setFilter] = useState<StatusFilter>('ativa')
   const [search, setSearch] = useState('')
   const { toastMessage, showToast } = useToast()
+
+  const loadPatients = useCallback(async () => {
+    setLoading(true)
+    try {
+      const data = await listPatients()
+      setPatients(data)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { loadPatients() }, [loadPatients])
 
   const query = search.trim().toLowerCase()
   const displayed = patients.filter(
@@ -24,14 +38,18 @@ export function PatientsPage() {
       (query === '' || p.name.toLowerCase().includes(query)),
   )
 
-  function handleSaved() {
-    setPatients(sortByEDD([...mockPatients]))
+  async function handleSaved() {
+    await loadPatients()
     showToast('Gestante cadastrada com sucesso')
+  }
+
+  async function handleSignOut() {
+    await signOut()
+    navigate('/login')
   }
 
   return (
     <div className="min-h-screen bg-bg">
-      {/* Barra de navegação */}
       <header className="bg-surface border-b border-border sticky top-0 z-20">
         <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -43,30 +61,35 @@ export function PatientsPage() {
             <span className="font-bold text-gray-900 text-base">Lunen EMR</span>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-sm text-muted hidden sm:block">Módulo Obstétrico</span>
-            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm">
-              D
-            </div>
+            <span className="text-sm text-muted hidden sm:block">
+              {profile?.full_name ?? 'Módulo Obstétrico'}
+            </span>
+            <button
+              onClick={handleSignOut}
+              title="Sair"
+              className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm hover:bg-primary/20 transition-colors"
+            >
+              {profile?.full_name?.charAt(0).toUpperCase() ?? 'U'}
+            </button>
           </div>
         </div>
       </header>
 
       <main className="max-w-6xl mx-auto px-6 py-8">
-        {/* Cabeçalho da página */}
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 mb-1">Gestantes</h1>
             <p className="text-muted text-sm">
-              {displayed.length}{' '}
-              {query !== ''
-                ? `resultado${displayed.length !== 1 ? 's' : ''}`
-                : filter === 'ativa'
-                  ? 'gestações ativas'
-                  : 'arquivadas'}
+              {loading ? 'Carregando...' : `${displayed.length} ${
+                query !== ''
+                  ? `resultado${displayed.length !== 1 ? 's' : ''}`
+                  : filter === 'ativa'
+                    ? 'gestações ativas'
+                    : 'arquivadas'
+              }`}
             </p>
           </div>
           <div className="flex items-center gap-3">
-            {/* Filtro Ativas / Arquivadas */}
             <div className="flex gap-1 bg-bg border border-border rounded-xl p-1">
               {(['ativa', 'arquivada'] as StatusFilter[]).map((f) => (
                 <button
@@ -97,12 +120,8 @@ export function PatientsPage() {
           </div>
         </div>
 
-        {/* Campo de busca */}
         <div className="relative mb-6">
-          <svg
-            className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none"
-            fill="none" viewBox="0 0 24 24" stroke="currentColor"
-          >
+          <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
           </svg>
           <input
@@ -114,16 +133,21 @@ export function PatientsPage() {
           />
         </div>
 
-        {/* Cards de resumo */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-          <StatCard label="Total" value={displayed.length.toString()} icon="👥" />
-          <StatCard label="Alto Risco" value={displayed.filter(p => p.riskLevel === 'high').length.toString()} icon="⚠️" />
-          <StatCard label="Risco Intermediário" value={displayed.filter(p => p.riskLevel === 'medium').length.toString()} icon="🟡" />
-          <StatCard label="Baixo Risco" value={displayed.filter(p => p.riskLevel === 'low').length.toString()} icon="✅" />
+          <StatCard label="Total" value={loading ? '—' : displayed.length.toString()} icon="👥" />
+          <StatCard label="Alto Risco" value={loading ? '—' : displayed.filter(p => p.riskLevel === 'high').length.toString()} icon="⚠️" />
+          <StatCard label="Risco Intermediário" value={loading ? '—' : displayed.filter(p => p.riskLevel === 'medium').length.toString()} icon="🟡" />
+          <StatCard label="Baixo Risco" value={loading ? '—' : displayed.filter(p => p.riskLevel === 'low').length.toString()} icon="✅" />
         </div>
 
-        {/* Lista de gestantes */}
-        {displayed.length === 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <svg className="w-6 h-6 text-primary animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+          </div>
+        ) : displayed.length === 0 ? (
           <div className="text-center py-20 text-muted">
             <p className="text-sm">
               {query !== ''
@@ -147,12 +171,9 @@ export function PatientsPage() {
                   className="block bg-surface rounded-card shadow-card hover:shadow-card-hover transition-all duration-200 p-5 group"
                 >
                   <div className="flex items-start gap-4">
-                    {/* Avatar */}
                     <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0 ${patient.status === 'arquivada' ? 'bg-muted/40' : 'bg-gradient-to-br from-primary to-accent'}`}>
                       {patient.name.charAt(0)}
                     </div>
-
-                    {/* Informações */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
                         <div>
@@ -161,9 +182,7 @@ export function PatientsPage() {
                           </h2>
                           <div className="flex flex-wrap items-center gap-2 mt-0.5">
                             {patient.status === 'arquivada' ? (
-                              <span className="text-xs font-medium text-muted bg-muted/10 border border-muted/20 px-2 py-0.5 rounded-pill">
-                                Arquivada
-                              </span>
+                              <span className="text-xs font-medium text-muted bg-muted/10 border border-muted/20 px-2 py-0.5 rounded-pill">Arquivada</span>
                             ) : (
                               <RiskBadge level={patient.riskLevel} size="sm" />
                             )}
@@ -175,15 +194,11 @@ export function PatientsPage() {
                         <div className="text-right flex-shrink-0">
                           <div className="flex items-baseline gap-1 justify-end">
                             <span className={`text-xl font-bold ${patient.status === 'arquivada' ? 'text-muted' : 'text-primary'}`}>{weeks}</span>
-                            <span className="text-xs text-muted font-medium">
-                              sem {days > 0 ? `+ ${days}d` : ''}
-                            </span>
+                            <span className="text-xs text-muted font-medium">sem {days > 0 ? `+ ${days}d` : ''}</span>
                           </div>
                           <p className="text-xs text-muted">DPP {formatEDD(edd)}</p>
                         </div>
                       </div>
-
-                      {/* Barra de evolução */}
                       <div className="mt-3">
                         <div className="flex justify-between text-xs text-muted mb-1">
                           <span>Evolução gestacional</span>
@@ -197,8 +212,6 @@ export function PatientsPage() {
                         </div>
                       </div>
                     </div>
-
-                    {/* Seta */}
                     <div className="flex-shrink-0 self-center text-muted/30 group-hover:text-primary/50 transition-colors">
                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />

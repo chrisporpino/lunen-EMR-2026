@@ -158,10 +158,14 @@ CREATE TRIGGER trg_audit_medications
   AFTER INSERT OR UPDATE OR DELETE ON medications
   FOR EACH ROW EXECUTE FUNCTION audit_log_trigger();
 
--- ─── 5. Criação automática de profile no signup ────────────
--- Quando um usuário cria conta via Supabase Auth, cria o
--- registro em profiles se os metadados (organization_id, role)
--- forem informados no signUp({ data: { ... } }).
+-- ─── 5. Criação automática de organização + profile no signup ─
+-- Fluxo: usuário cria conta → sistema cria organização → cria profile
+--
+-- Metadados opcionais no signUp({ data: { ... } }):
+--   full_name        → nome do usuário (fallback: prefixo do e-mail)
+--   organization_name → nome da clínica (fallback: "Clínica <full_name>")
+--   organization_id  → UUID de org existente (para convidar usuário a org já criada)
+--   role             → papel na org (fallback: 'admin')
 
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER
@@ -169,27 +173,46 @@ LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_org_id UUID;
+  v_org_id   UUID;
+  v_org_name TEXT;
+  v_name     TEXT;
+  v_role     TEXT;
 BEGIN
-  -- Só executa se o convite incluiu organization_id
+  v_name := COALESCE(
+    NULLIF(TRIM(NEW.raw_user_meta_data ->> 'full_name'), ''),
+    split_part(NEW.email, '@', 1)
+  );
+
+  v_role := COALESCE(
+    NULLIF(TRIM(NEW.raw_user_meta_data ->> 'role'), ''),
+    'admin'
+  );
+
+  -- Se foi passado organization_id, vincula a uma org existente
   v_org_id := (NEW.raw_user_meta_data ->> 'organization_id')::UUID;
 
-  IF v_org_id IS NOT NULL THEN
-    INSERT INTO profiles (id, organization_id, full_name, role)
-    VALUES (
-      NEW.id,
-      v_org_id,
-      COALESCE(NEW.raw_user_meta_data ->> 'full_name', NEW.email),
-      COALESCE(NEW.raw_user_meta_data ->> 'role', 'nurse')
-    )
-    ON CONFLICT (id) DO NOTHING;
+  -- Caso contrário, cria uma nova organização automaticamente
+  IF v_org_id IS NULL THEN
+    v_org_name := COALESCE(
+      NULLIF(TRIM(NEW.raw_user_meta_data ->> 'organization_name'), ''),
+      'Clínica ' || v_name
+    );
+
+    INSERT INTO organizations (name)
+    VALUES (v_org_name)
+    RETURNING id INTO v_org_id;
   END IF;
+
+  -- Cria o profile vinculado à organização
+  INSERT INTO profiles (id, organization_id, full_name, role)
+  VALUES (NEW.id, v_org_id, v_name, v_role)
+  ON CONFLICT (id) DO NOTHING;
 
   RETURN NEW;
 END;
 $$;
 
 -- Trigger no schema auth (gerenciado pelo Supabase)
-CREATE TRIGGER on_auth_user_created
+CREATE OR REPLACE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION handle_new_user();

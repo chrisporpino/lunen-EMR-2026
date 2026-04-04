@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import type { Patient, RiskLevel } from '../../types'
 import type { PatientFormValues } from '../../types/forms'
 import { calculateEDD } from '../../lib/gestation'
-import { addPatient, updatePatient } from '../../data/mockPatients'
+import { createPatient, updatePatient } from '../../services/patients'
+import { useAuth } from '../../contexts/AuthContext'
 import { Drawer } from './Drawer'
 import { Field, inputCls, DrawerFooter } from './FormField'
 
@@ -39,8 +40,11 @@ const riskActiveCls: Record<RiskLevel, string> = {
 
 export function PatientFormDrawer({ open, onClose, onSaved, initialValues }: Props) {
   const isEditing = !!initialValues
+  const { profile, user } = useAuth()
   const [form, setForm] = useState<PatientFormValues>(EMPTY)
   const [errors, setErrors] = useState<Partial<Record<keyof PatientFormValues, string>>>({})
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!open) return
@@ -60,6 +64,7 @@ export function PatientFormDrawer({ open, onClose, onSaved, initialValues }: Pro
       setForm(EMPTY)
     }
     setErrors({})
+    setSaveError(null)
   }, [open])
 
   function set<K extends keyof PatientFormValues>(key: K, value: PatientFormValues[K]) {
@@ -77,42 +82,44 @@ export function PatientFormDrawer({ open, onClose, onSaved, initialValues }: Pro
     return Object.keys(e).length === 0
   }
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (!validate()) return
-    const edd = calculateEDD(form.dum)
-    const eddCalcStr = edd.toISOString().slice(0, 10)
-
-    if (isEditing) {
-      updatePatient(initialValues.id, {
-        name: form.name.trim(),
-        dateOfBirth: form.dateOfBirth,
-        dum: form.dum,
-        eddCalc: eddCalcStr,
-        riskLevel: form.riskLevel,
-        bloodType: form.bloodType,
-        gravidity: form.gravidity,
-        parity: form.parity,
-        phone: form.phone,
-        address: form.address,
-      })
-    } else {
-      addPatient({
-        id: 'p-' + Date.now().toString(36),
-        name: form.name.trim(),
-        dateOfBirth: form.dateOfBirth,
-        dum: form.dum,
-        eddCalc: eddCalcStr,
-        riskLevel: form.riskLevel,
-        bloodType: form.bloodType,
-        gravidity: form.gravidity,
-        parity: form.parity,
-        phone: form.phone,
-        address: form.address,
-        status: 'ativa',
-      })
+    if (!profile || !user) { setSaveError('Sessão expirada. Faça login novamente.'); return }
+    setSaving(true)
+    setSaveError(null)
+    try {
+      if (isEditing) {
+        await updatePatient(initialValues.id, {
+          name: form.name.trim(),
+          dateOfBirth: form.dateOfBirth,
+          dum: form.dum,
+          riskLevel: form.riskLevel,
+          bloodType: form.bloodType,
+          gravidity: form.gravidity,
+          parity: form.parity,
+          phone: form.phone,
+          address: form.address,
+        }, user.id)
+      } else {
+        await createPatient({
+          name: form.name.trim(),
+          dateOfBirth: form.dateOfBirth,
+          dum: form.dum,
+          riskLevel: form.riskLevel,
+          bloodType: form.bloodType,
+          gravidity: form.gravidity,
+          parity: form.parity,
+          phone: form.phone,
+          address: form.address,
+        }, profile.organization_id, user.id)
+      }
+      onSaved()
+      onClose()
+    } catch {
+      setSaveError('Erro ao salvar. Tente novamente.')
+    } finally {
+      setSaving(false)
     }
-    onSaved()
-    onClose()
   }
 
   return (
@@ -126,10 +133,20 @@ export function PatientFormDrawer({ open, onClose, onSaved, initialValues }: Pro
           onClose={onClose}
           onSubmit={handleSubmit}
           submitLabel={isEditing ? 'Salvar alterações' : 'Cadastrar'}
+          loading={saving}
         />
       }
     >
       <div className="space-y-5">
+        {saveError && (
+          <div className="flex items-center gap-2 bg-danger/8 border border-danger/20 rounded-xl px-3 py-2.5">
+            <svg className="w-4 h-4 text-danger flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <p className="text-xs text-danger font-medium">{saveError}</p>
+          </div>
+        )}
+
         <Field label="Nome completo" error={errors.name} required>
           <input
             type="text"
