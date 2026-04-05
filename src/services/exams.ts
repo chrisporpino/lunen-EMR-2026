@@ -2,7 +2,8 @@ import { supabase } from '../lib/supabase'
 import type { Exam } from '../types'
 
 function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value || 0))
+  const n = Number(value)
+  return Math.min(max, Math.max(min, isFinite(n) ? n : 0))
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

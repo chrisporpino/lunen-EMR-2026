@@ -3,13 +3,15 @@ import type { Consultation } from '../types'
 
 /** Retorna o valor se estiver dentro do intervalo [min, max], senão null. */
 function inRange(value: number | undefined | null, min: number, max: number): number | null {
-  if (value == null || value <= 0) return null
-  return value >= min && value <= max ? value : null
+  const n = Number(value)
+  if (!isFinite(n) || n <= 0) return null
+  return n >= min && n <= max ? n : null
 }
 
 /** Clamp para campos NOT NULL com check constraint */
 function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value || 0))
+  const n = Number(value)
+  return Math.min(max, Math.max(min, isFinite(n) ? n : 0))
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

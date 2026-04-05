@@ -2,12 +2,14 @@ import { supabase } from '../lib/supabase'
 import type { Ultrasound } from '../types'
 
 function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value || 0))
+  const n = Number(value)
+  return Math.min(max, Math.max(min, isFinite(n) ? n : 0))
 }
 
 function inRange(value: number | undefined | null, min: number, max: number): number | null {
-  if (value == null || value <= 0) return null
-  return value >= min && value <= max ? value : null
+  const n = Number(value)
+  if (!isFinite(n) || n <= 0) return null
+  return n >= min && n <= max ? n : null
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
