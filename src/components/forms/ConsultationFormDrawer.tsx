@@ -281,7 +281,7 @@ export function ConsultationFormDrawer({ open, onClose, onSaved, patientId, dum,
           <Field label="BCF (bpm)">
             <input
               type="number"
-              min={0} max={220} step={1}
+              min={50} max={220} step={1}
               value={form.fetalHeartRate || ''}
               onChange={(e) => set('fetalHeartRate', Number(e.target.value))}
               placeholder="0"

@@ -4,7 +4,7 @@ import type { Consultation } from '../types'
 /** Retorna o valor se estiver dentro do intervalo [min, max], senão null. */
 function inRange(value: number | undefined | null, min: number, max: number): number | null {
   const n = Number(value)
-  if (!isFinite(n) || n <= 0) return null
+  if (!isFinite(n) || n === 0) return null
   return n >= min && n <= max ? n : null
 }
 
@@ -72,7 +72,7 @@ export async function createConsultation(
       weight: inRange(values.vitalSigns.weight, 30, 200),
       height: inRange(values.vitalSigns.height, 100, 220),
       uterine_height: inRange(values.uterineHeight, 0.1, 50),
-      fetal_heart_rate: inRange(values.fetalHeartRate, 80, 220),
+      fetal_heart_rate: inRange(values.fetalHeartRate, 50, 220),
       fetal_presentation: values.fetalPresentation || null,
       edema: values.edema || null,
       notes: values.notes || null,
@@ -104,7 +104,7 @@ export async function updateConsultation(
       weight: inRange(values.vitalSigns.weight, 30, 200),
       height: inRange(values.vitalSigns.height, 100, 220),
       uterine_height: inRange(values.uterineHeight, 0.1, 50),
-      fetal_heart_rate: inRange(values.fetalHeartRate, 80, 220),
+      fetal_heart_rate: inRange(values.fetalHeartRate, 50, 220),
       fetal_presentation: values.fetalPresentation || null,
       edema: values.edema || null,
       notes: values.notes || null,
