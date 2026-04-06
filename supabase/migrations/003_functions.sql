@@ -774,16 +774,17 @@ SET search_path = public
 AS $$
 DECLARE
   v_org_id          UUID;
+  v_dum             DATE;
   v_last            consultations%ROWTYPE;
   v_days_since_last INTEGER;
   v_iga_weeks       SMALLINT;
   v_exam_row        exams%ROWTYPE;
   v_count           INTEGER := 0;
 BEGIN
-  SELECT organization_id, dum INTO v_org_id, v_iga_weeks
+  SELECT organization_id, dum INTO v_org_id, v_dum
   FROM patients WHERE id = p_patient_id;
 
-  v_iga_weeks := ((CURRENT_DATE - (SELECT dum FROM patients WHERE id = p_patient_id))::INTEGER / 7)::SMALLINT;
+  v_iga_weeks := ((CURRENT_DATE - v_dum)::INTEGER / 7)::SMALLINT;
 
   IF v_org_id IS NULL THEN RETURN 0; END IF;
 
