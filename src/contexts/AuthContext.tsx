@@ -36,27 +36,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // loading só bloqueia até sabermos se há sessão — fetchProfile não bloqueia
     supabase.auth.getSession()
-      .then(async ({ data: { session } }) => {
+      .then(({ data: { session } }) => {
         setSession(session)
         setUser(session?.user ?? null)
         if (session?.user) {
-          const p = await fetchProfile(session.user.id)
-          setProfile(p)
+          fetchProfile(session.user.id).then(setProfile).catch(() => {})
         }
       })
-      .catch(() => { /* network error ou schema ainda não aplicado */ })
+      .catch(() => {})
       .finally(() => setLoading(false))
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session)
       setUser(session?.user ?? null)
-      if (session?.user) {
-        const p = await fetchProfile(session.user.id)
-        setProfile(p)
-      } else {
+      if ((event === 'SIGNED_IN' || event === 'USER_UPDATED') && session?.user) {
+        fetchProfile(session.user.id).then(setProfile).catch(() => {})
+      } else if (event === 'SIGNED_OUT') {
         setProfile(null)
       }
+      // TOKEN_REFRESHED: session/user atualizados acima, profile permanece
     })
 
     return () => subscription.unsubscribe()
